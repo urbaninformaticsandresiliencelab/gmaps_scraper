@@ -15,21 +15,19 @@ import sys
 import parse_tiger # Separate Python script used to get city extents
 
 ## Configuration ###############################################################
-
 # Attempt to load credentials
 try:
     import credentials
     if (credentials.api_key == "Enter key here"):
         print("Error: no api key provided. Please add one to credentials.py.")
+        sys.exit(1)
 except:
-    if (os.path.isfile("credentials.py")):
-        print("Error: no api key provided. Please add one to credentials.py.")
-    else:
-        credentials_file = open("credentials.py", "w")
-        credentials_file.write("# Google maps API key to be used by the scraper\n"
-                               "api_key = \"Enter key here\"\n")
-        credentials_file.close()
+    if (not os.path.isfile("credentials.py")):
         print("Error: could not find credentials.py. One has been created for you.")
+    credentials_file = open("credentials.py", "w")
+    credentials_file.write("# Google maps API key to be used by the scraper\n"
+                           "api_key = \"Enter key here\"\n")
+    credentials_file.close()
     sys.exit(1)
 api_key = credentials.api_key
 
