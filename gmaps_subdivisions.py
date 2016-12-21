@@ -270,11 +270,25 @@ for place_type in place_types:
 ################################################################################
 def gmaps_extract_subdivisions(min_latitude, max_latitude, min_longitude,
                                max_longitude, grid_width, place_type,
-                               subdivision_parent_id = "root"):
+                               subdivision_parent_id = "root",
+                               target_subdivision_id = ""):
 
     subdivision_id = 0
     subdivision_width = (max_latitude - min_latitude)/grid_width
     subdivision_height = (max_longitude - min_longitude)/grid_width
+
+    # If a target subdivision ID is supplied, skip to that subdivision
+    target_subdivision = 0
+    split_id = target_subdivision_id.split(" -> ")
+    if (target_subdivision_id != ""):
+        if (target_subdivision_id[:4] == "root"):
+            print("Skipping forward to %s\n" % target_subdivision_id)
+            target_subdivision = int(split_id[2])
+            split_id = split_id[2:]
+        else:
+            target_subdivision = int(split_id[0])
+            split_id = split_id[1:]
+    target_subdivision_id = " -> ".join(split_id)
 
     for row in range(grid_width):
         for column in range(grid_width):
@@ -302,7 +316,12 @@ def gmaps_extract_subdivisions(min_latitude, max_latitude, min_longitude,
             subdivision_id += 1
             subdivision_id_string = (subdivision_parent_id + " -> "
                                      + str(subdivision_id))
-            print("Subdivision ID: %s" % subdivision_id_string)
+
+            if (target_subdivision != 0):
+                if (target_subdivision == subdivision_id):
+                    print("Skipped to %s" % subdivision_id_string)
+                else:
+                    continue
 
             # First, we need to establish the bounds of this subdivision
             subdivision_min_latitude = (min_latitude
@@ -324,8 +343,6 @@ def gmaps_extract_subdivisions(min_latitude, max_latitude, min_longitude,
                                              + subdivision_max_longitude)/2)
             subdivision_center_latitude = ((subdivision_min_latitude
                                              + subdivision_max_latitude)/2)
-            print("Center coords: (%f, %f)" % (subdivision_center_latitude,
-                                               subdivision_center_longitude))
 
             # The haversine formula is used to convert the width and height
             # from degrees into meters before finding the radius in meters
@@ -337,56 +354,64 @@ def gmaps_extract_subdivisions(min_latitude, max_latitude, min_longitude,
             # From there, we use the pythagorean theorem to find the radius
             subdivision_radius_meters = (sqrt((width_meters/2)**2
                                               + (height_meters/2)**2))
-            print("Radius: %f meters" % subdivision_radius_meters)
 
             ## API PART ########################################################
             # This bool will be changed to true if more recursions are necessary
             make_subdivisions = False
 
-            # If the radius of the subdivision exceeds the max, skip the result
-            # collection and recurse
-            if (subdivision_radius_meters > max_radius_meters):
-                print("Making subdivisions because radius exceeded maximum")
-                make_subdivisions = True
+            if (len(split_id) == 0) or ("" in split_id):
+                print("Subdivision ID: %s" % subdivision_id_string)
+                print("Center coords: (%f, %f)" % (subdivision_center_latitude,
+                                                   subdivision_center_longitude))
+                print("Radius: %f meters" % subdivision_radius_meters)
 
-            elif (subdivision_radius_meters < min_radius_meters):
-                print("Terminating branch because radius is below the minimum")
-                log(
-                    "warning_log.csv",
-                    ("%f,%s. Subdivision ID: %s. Place type: %s. Coordinates: (%f, %f). Radius: %f" % (
-                        (time.time() - start_time),
-                        "Radius fell below minimum value",
-                        subdivision_id_string,
-                        place_type,
-                        subdivision_center_latitude,
-                        subdivision_center_longitude,
-                        subdivision_radius_meters)
+                # If the radius of the subdivision exceeds the max, skip the result
+                # collection and recurse
+                if (subdivision_radius_meters > max_radius_meters):
+                    print("Making subdivisions because radius exceeded maximum")
+                    make_subdivisions = True
+
+                elif (subdivision_radius_meters < min_radius_meters):
+                    print("Terminating branch because radius is below the minimum")
+                    log(
+                        "warning_log.csv",
+                        ("%f,%s. Subdivision ID: %s. Place type: %s. Coordinates: (%f, %f). Radius: %f" % (
+                            (time.time() - start_time),
+                            "Radius fell below minimum value",
+                            subdivision_id_string,
+                            place_type,
+                            subdivision_center_latitude,
+                            subdivision_center_longitude,
+                            subdivision_radius_meters)
+                        )
                     )
-                )
+
+                else:
+
+                    # Get results
+                    results = get_points_of_interest(subdivision_center_latitude,
+                                                     subdivision_center_longitude,
+                                                     subdivision_radius_meters,
+                                                     place_type,
+                                                     subdivision_id_string)
+                    print("%d results for place_type %s" % (len(results),
+                                                            place_type))
+                    print("%d pages traversed since program was started"
+                          % pages_traversed)
+
+                    # Save the results in a pickle file
+                    filename = open(output_directory + "/data.p", "a+b")
+                    pickle.dump(results, filename)
+                    filename.close()
+
+                    # If 60 results were returned, recurse
+                    if (len(results) == 60):
+                        print("Making subdivisions because max results were "
+                              + "returned")
+                        make_subdivisions = True
 
             else:
-
-                # Get results
-                results = get_points_of_interest(subdivision_center_latitude,
-                                                 subdivision_center_longitude,
-                                                 subdivision_radius_meters,
-                                                 place_type,
-                                                 subdivision_id_string)
-                print("%d results for place_type %s" % (len(results),
-                                                        place_type))
-                print("%d pages traversed since program was started"
-                      % pages_traversed)
-
-                # Save the results in a pickle file
-                filename = open(output_directory + "/data.p", "a+b")
-                pickle.dump(results, filename)
-                filename.close()
-
-                # If 60 results were returned, recurse
-                if (len(results) == 60):
-                    print("Making subdivisions because max results were "
-                          + "returned")
-                    make_subdivisions = True
+                make_subdivisions = True
 
             # Recurse if necessary
             if (make_subdivisions):
@@ -396,37 +421,40 @@ def gmaps_extract_subdivisions(min_latitude, max_latitude, min_longitude,
                                            subdivision_min_longitude,
                                            subdivision_max_longitude,
                                            3, place_type,
-                                           subdivision_id_string)
+                                           subdivision_id_string,
+                                           target_subdivision_id)
             else:
                 print("Branch terminated\n")
 
 ## Program Initialization ######################################################
-# Prompt the user to enter a state
-while (not os.path.isdir("tiger-2016/" + state_input)):
-    state_input = raw_input("Please specify a state: ")
-state_shapefile = glob.glob("tiger-2016/" + state_input + "/*.shp")[0]
 
-# Prompt the user to enter a city
-city_extents = False
-while (not city_extents):
-    city_input = raw_input("Please specify a city or \"full\" for the entire "
-                           + "state: ")
-    city_extents = parse_tiger.get_extents(state_shapefile, city_input)
-print(city_extents)
+if (__name__ == "__main__"):
+    # Prompt the user to enter a state
+    while (not os.path.isdir("tiger-2016/" + state_input)):
+        state_input = raw_input("Please specify a state: ")
+    state_shapefile = glob.glob("tiger-2016/" + state_input + "/*.shp")[0]
 
-initialize_output_directory((
-    "%s_%s_%s" % (
-        city_input, state_input, datetime.datetime.now().isoformat()
-    )
-).replace(" ", "_"))
+    # Prompt the user to enter a city
+    city_extents = False
+    while (not city_extents):
+        city_input = raw_input("Please specify a city or \"full\" for the entire "
+                               + "state: ")
+        city_extents = parse_tiger.get_extents(state_shapefile, city_input)
+    print(city_extents)
 
-print
+    initialize_output_directory((
+        "%s_%s_%s" % (
+            city_input, state_input, datetime.datetime.now().isoformat()
+        )
+    ).replace(" ", "_"))
 
-# For each place_type, the subdivision -> extraction process is restarted from
-# scratch.
-for place_type in place_types:
-    gmaps_extract_subdivisions(city_extents["min_latitude"],
-                               city_extents["max_latitude"],
-                               city_extents["min_longitude"],
-                               city_extents["max_longitude"],
-                               3, place_type)
+    print
+
+    # For each place_type, the subdivision -> extraction process is restarted
+    # from scratch.
+    for place_type in place_types:
+        gmaps_extract_subdivisions(city_extents["min_latitude"],
+                                   city_extents["max_latitude"],
+                                   city_extents["min_longitude"],
+                                   city_extents["max_longitude"],
+                                   3, place_type)
