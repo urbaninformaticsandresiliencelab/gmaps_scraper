@@ -283,7 +283,7 @@ def gmaps_extract_subdivisions(min_latitude, max_latitude, min_longitude,
     if (target_subdivision_id != ""):
         if (target_subdivision_id[:4] == "root"):
             print("Skipping forward to %s\n" % target_subdivision_id)
-            target_subdivision = int(split_id[2])
+            target_subdivision = int(split_id[1])
             split_id = split_id[2:]
         else:
             target_subdivision = int(split_id[0])
