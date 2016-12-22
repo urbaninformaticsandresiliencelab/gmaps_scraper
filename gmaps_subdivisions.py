@@ -65,7 +65,8 @@ city_input = "null"
 state_input = "null"
 
 # Files that will be written to (names are changed later)
-output_directory = "data" # The file that results will be written to
+output_directory_root = "output/raw_pickle/" # The top level output directory
+output_directory = "data" # The subdirectory that results will be written to
 
 # Used for self-imposed request limiting
 start_time = time.time()
@@ -90,9 +91,13 @@ def haversine(lon1, lat1, lon2, lat2):
 # Initialize output directory
 def initialize_output_directory(directory_name):
     global output_directory
-    output_directory = directory_name
-    os.mkdir(output_directory)
-    print("Writing data and logs to ./" + output_directory + "/")
+    output_directory = output_directory_root + "/" + directory_name
+    if (not os.path.exists(output_directory)):
+        os.makedirs(output_directory)
+    else:
+        print("Error: directory already exists")
+        raise Exception
+    print("Writing data and logs to %s/" % output_directory)
     log("request_log.csv", "TIME,REQUESTS")
     log("error_log.csv", "TIME,ERROR")
     log("warning_log.csv", "TIME,ERROR")
@@ -268,10 +273,10 @@ for place_type in place_types:
 '''
 
 ################################################################################
-def gmaps_extract_subdivisions(min_latitude, max_latitude, min_longitude,
-                               max_longitude, grid_width, place_type,
-                               subdivision_parent_id = "root",
-                               target_subdivision_id = ""):
+def extract_subdivisions(min_latitude, max_latitude, min_longitude,
+                         max_longitude, grid_width, place_type,
+                         subdivision_parent_id = "root",
+                         target_subdivision_id = ""):
 
     subdivision_id = 0
     subdivision_width = (max_latitude - min_latitude)/grid_width
@@ -401,6 +406,7 @@ def gmaps_extract_subdivisions(min_latitude, max_latitude, min_longitude,
 
                     # Save the results in a pickle file
                     filename = open(output_directory + "/data.p", "a+b")
+                    print(results)
                     pickle.dump(results, filename)
                     filename.close()
 
@@ -416,13 +422,13 @@ def gmaps_extract_subdivisions(min_latitude, max_latitude, min_longitude,
             # Recurse if necessary
             if (make_subdivisions):
                 print
-                gmaps_extract_subdivisions(subdivision_min_latitude,
-                                           subdivision_max_latitude,
-                                           subdivision_min_longitude,
-                                           subdivision_max_longitude,
-                                           3, place_type,
-                                           subdivision_id_string,
-                                           target_subdivision_id)
+                extract_subdivisions(subdivision_min_latitude,
+                                     subdivision_max_latitude,
+                                     subdivision_min_longitude,
+                                     subdivision_max_longitude,
+                                     3, place_type,
+                                     subdivision_id_string,
+                                     target_subdivision_id)
             else:
                 print("Branch terminated\n")
 
@@ -453,8 +459,8 @@ if (__name__ == "__main__"):
     # For each place_type, the subdivision -> extraction process is restarted
     # from scratch.
     for place_type in place_types:
-        gmaps_extract_subdivisions(city_extents["min_latitude"],
-                                   city_extents["max_latitude"],
-                                   city_extents["min_longitude"],
-                                   city_extents["max_longitude"],
-                                   3, place_type)
+        extract_subdivisions(city_extents["min_latitude"],
+                             city_extents["max_latitude"],
+                             city_extents["min_longitude"],
+                             city_extents["max_longitude"],
+                             3, place_type)
