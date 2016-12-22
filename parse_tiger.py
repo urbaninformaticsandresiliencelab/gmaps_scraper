@@ -1,21 +1,8 @@
 #!/usr/bin/env python
+# Library for parsing U.S. Census shapefiles
 
 from math import radians, cos, sin, asin, sqrt
 import glob, shapefile, re, sys
-
-################################################################################
-# Calculate distance between a pair of geographical coordinates, in meters
-def haversine(lon1, lat1, lon2, lat2):
-    # Convert decimal degrees to radians
-    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
-
-    dlon = lon2 - lon1
-    dlat = lat2 - lat1
-    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-    c = 2 * asin(sqrt(a))
-    m = 6367000 * c
-
-    return m
 
 ################################################################################
 # Given an array of (x, y) coordinates, return the most extreme values
@@ -84,14 +71,3 @@ def get_extents(shp_file, target = "full"):
         else:
             info["name"] = target
         return info
-
-'''
-# demo
-shp_file = glob.glob("tiger-2016/New York/*.shp")[0]
-print("Using file %s" % shp_file)
-print
-print(get_extents(shp_file))
-print(get_extents(shp_file, "Albany"))
-print(get_extents(shp_file, "Syracuse"))
-print(get_extents(shp_file, "New York"))
-'''

@@ -12,7 +12,8 @@ import os
 import time
 import sys
 
-import parse_tiger # Separate Python script used to get city extents
+import parse_tiger
+import geo
 
 ## Configuration ###############################################################
 # Attempt to load credentials
@@ -75,18 +76,6 @@ pages_traversed = 0
 pages_traversed_this_period = 0
 
 ## Utility Functions ###########################################################
-# Calculate distance between a pair of geographical coordinates, in meters
-def haversine(lon1, lat1, lon2, lat2):
-    # Convert decimal degrees to radians
-    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
-
-    dlon = lon2 - lon1
-    dlat = lat2 - lat1
-    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-    c = 2 * asin(sqrt(a))
-    m = 6367000 * c
-
-    return m
 
 # Initialize output directory
 def initialize_output_directory(directory_name):
@@ -351,10 +340,10 @@ def extract_subdivisions(min_latitude, max_latitude, min_longitude,
 
             # The haversine formula is used to convert the width and height
             # from degrees into meters before finding the radius in meters
-            width_meters = haversine(0, subdivision_min_longitude,
-                                     0, subdivision_max_longitude)
-            height_meters = haversine(0, subdivision_min_latitude,
-                                      0, subdivision_max_latitude)
+            width_meters = geo.haversine(0, subdivision_min_longitude,
+                                         0, subdivision_max_longitude)
+            height_meters = geo.haversine(0, subdivision_min_latitude,
+                                          0, subdivision_max_latitude)
 
             # From there, we use the pythagorean theorem to find the radius
             subdivision_radius_meters = (sqrt((width_meters/2)**2
