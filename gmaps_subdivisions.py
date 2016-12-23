@@ -14,6 +14,7 @@ import sys
 
 import parse_tiger
 import geo
+import visualizer
 
 ## Configuration ###############################################################
 # Attempt to load credentials
@@ -172,7 +173,6 @@ def get_points_of_interest(latitude, longitude, radius_meters, place_type,
             )
 
         # From https://developers.google.com/places/web-service/search:
-        # "A next_page_token will not be returned if there are no additional
         # results to display." If the next_page_token exists, recurse and append
         # to the combined_results array.
         time.sleep(request_delay)
@@ -319,11 +319,11 @@ def extract_subdivisions(min_latitude, max_latitude, min_longitude,
 
             # First, we need to establish the bounds of this subdivision
             subdivision_min_latitude = (min_latitude
-                                        + (subdivision_height * float(column)))
+                                        + (subdivision_width * float(row)))
             subdivision_max_latitude = (subdivision_min_latitude
-                                        + subdivision_height)
+                                        + subdivision_width)
             subdivision_min_longitude = (min_longitude
-                                         + (subdivision_width * float(row)))
+                                         + (subdivision_height * float(column)))
             subdivision_max_longitude = (subdivision_min_longitude
                                         + subdivision_height)
             #print("Bottom left coords: (%f, %f)" % (subdivision_min_latitude,
@@ -358,6 +358,22 @@ def extract_subdivisions(min_latitude, max_latitude, min_longitude,
                 print("Center coords: (%f, %f)" % (subdivision_center_latitude,
                                                    subdivision_center_longitude))
                 print("Radius: %f meters" % subdivision_radius_meters)
+                print("Extents: ")
+                print({
+                    "min_longitude": subdivision_min_longitude,
+                    "max_longitude": subdivision_max_longitude,
+                    "min_latitude": subdivision_min_latitude,
+                    "max_latitude": subdivision_max_latitude
+                })
+                visualizer.add_points([
+                    (subdivision_min_longitude, subdivision_min_latitude),
+                    (subdivision_max_longitude, subdivision_min_latitude),
+                    (subdivision_max_longitude, subdivision_max_latitude),
+                    (subdivision_min_longitude, subdivision_max_latitude),
+                    (subdivision_min_longitude, subdivision_min_latitude),
+                ])
+                print("Visualization: %s" % visualizer.generate_url())
+                visualizer.reset_points()
 
                 # If the radius of the subdivision exceeds the max, skip the result
                 # collection and recurse
@@ -395,7 +411,6 @@ def extract_subdivisions(min_latitude, max_latitude, min_longitude,
 
                     # Save the results in a pickle file
                     filename = open(output_directory + "/data.p", "a+b")
-                    print(results)
                     pickle.dump(results, filename)
                     filename.close()
 
