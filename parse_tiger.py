@@ -4,7 +4,6 @@
 from math import radians, cos, sin, asin, sqrt
 import glob, shapefile, re, sys
 
-################################################################################
 # Given an array of (x, y) coordinates, return the most extreme values
 def extract_extents(points):
 
@@ -35,14 +34,20 @@ def extract_extents(points):
         "max_longitude": max_longitude,
     }
 
-################################################################################
+
+# Get all points belonging to the given shapes
+def dump_points(shp_file, name = "all"):
+    points = []
+    for shape_record in shapefile.Reader(shp_file).shapeRecords():
+        if (name == "all") or (shape_record.record[4] == name):
+            points += shape_record.shape.points
+    return points
+
 # Parse the given shp_file for info of the shape with the given name, or, if
 # none is specified, the info of the shapefile as a whole
-
 # Returns a dictionary of various information about the target shape:
 # "name" = target's name
 # "center" = the center of the shape
-
 def get_extents(shp_file, target = "full"):
 
     points = []
@@ -52,11 +57,11 @@ def get_extents(shp_file, target = "full"):
         # If no target is specified, the points array will consist of the
         # points of all shapes in the given shapefile
         if (target == "full"):
-            points += shape_record.shape.points
+            points = dump_points(shp_file)
         # If a target is specified, the points array will consist of only that
         # target's points
-        elif (shape_record.record[4] == target):
-            points = shape_record.shape.points
+        else:
+            points = dump_points(shp_file, target)
 
     print("%d Points for target \"%s\"" % (len(points), target))
 
