@@ -53,15 +53,14 @@ def get_extents(shp_file, target = "full"):
     points = []
     info = {}
 
-    for shape_record in shapefile.Reader(shp_file).shapeRecords():
-        # If no target is specified, the points array will consist of the
-        # points of all shapes in the given shapefile
-        if (target == "full"):
-            points = dump_points(shp_file)
-        # If a target is specified, the points array will consist of only that
-        # target's points
-        else:
-            points = dump_points(shp_file, target)
+    # If no target is specified, the points array will consist of the
+    # points of all shapes in the given shapefile
+    if (target == "full"):
+        points = dump_points(shp_file)
+    # If a target is specified, the points array will consist of only that
+    # target's points
+    else:
+        points = dump_points(shp_file, target)
 
     print("%d Points for target \"%s\"" % (len(points), target))
 
