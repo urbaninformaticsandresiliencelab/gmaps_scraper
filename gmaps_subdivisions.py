@@ -4,7 +4,6 @@
 #from geopy.geocoders import GoogleV3
 from math import radians, cos, sin, asin, sqrt
 import cPickle as pickle
-import datetime
 import googlemaps
 import glob
 #import numpy
@@ -34,407 +33,370 @@ except:
 api_key = credentials.api_key
 
 # There are 96 types of places that can be acquired
-place_types = ["accounting","airport","amusement_park","aquarium","art_gallery","atm","bakery","bank","bar","beauty_salon","bicycle_store","book_store","bowling_alley","bus_station","cafe","campground","car_dealer","car_rental","car_repair","car_wash","casino","cemetery","church","city_hall","clothing_store","convenience_store","courthouse","dentist","department_store","doctor","electrician","electronics_store","embassy","establishment","finance","fire_station","florist","food","funeral_home","furniture_store","gas_station","general_contractor","grocery_or_supermarket","gym","hair_care","hardware_store","health","hindu_temple","home_goods_store","hospital","insurance_agency","jewelry_store","laundry","lawyer","library","liquor_store","local_government_office","locksmith","lodging","meal_delivery","meal_takeaway","mosque","movie_rental","movie_theater","moving_company","museum","night_club","painter","park","parking","pet_store","pharmacy","physiotherapist","place_of_worship","plumber","police","post_office","real_estate_agency","restaurant","roofing_contractor","rv_park","school","shoe_store","shopping_mall","spa","stadium","storage","store","subway_station","synagogue","taxi_stand","train_station","transit_station","travel_agency","university","veterinary_care","zoo"]
+PLACE_TYPES = ["accounting","airport","amusement_park","aquarium","art_gallery","atm","bakery","bank","bar","beauty_salon","bicycle_store","book_store","bowling_alley","bus_station","cafe","campground","car_dealer","car_rental","car_repair","car_wash","casino","cemetery","church","city_hall","clothing_store","convenience_store","courthouse","dentist","department_store","doctor","electrician","electronics_store","embassy","establishment","finance","fire_station","florist","food","funeral_home","furniture_store","gas_station","general_contractor","grocery_or_supermarket","gym","hair_care","hardware_store","health","hindu_temple","home_goods_store","hospital","insurance_agency","jewelry_store","laundry","lawyer","library","liquor_store","local_government_office","locksmith","lodging","meal_delivery","meal_takeaway","mosque","movie_rental","movie_theater","moving_company","museum","night_club","painter","park","parking","pet_store","pharmacy","physiotherapist","place_of_worship","plumber","police","post_office","real_estate_agency","restaurant","roofing_contractor","rv_park","school","shoe_store","shopping_mall","spa","stadium","storage","store","subway_station","synagogue","taxi_stand","train_station","transit_station","travel_agency","university","veterinary_care","zoo"]
 
 # From https://developers.google.com/places/web-service/search: The maximum
 # allowed radius is 50000 meters.
-max_radius_meters = 50000
+MAX_RADIUS_METERS = 50000
 
 # No further subdivisions under this size will be made
-min_radius_meters = 5
+MIN_RADIUS_METERS = 5
 
 # The length of a period, in seconds
-period_length = 60*60 # 60*60 = one hour
+PERIOD_LENGTH = 60*60 # One hour
 
 # Maximum number of requests that can be made in one period
-max_requests_per_period = 5000
+MAX_REQUESTS_PER_PERIOD = 5000
 
 # Time, in seconds, to sleep between each request
-request_delay = 1.5
+REQUEST_DELAY = 1.5
 
 # Maximum number of times a request can be retried
-max_retries = 5
+MAX_RETRIES = 5
+
+# Files that will be written to (names are changed later)
+OUTPUT_DIRECTORY_ROOT = "output/raw_pickle/" # The top level output directory
 
 ## Variables Used Internally ###################################################
 # Google Maps API client object
 gmaps = googlemaps.Client(
-            key = api_key,
-            timeout = 600
-        )
+    key = api_key,
+    timeout = 600
+)
 
 # Used during interactive input (changed later)
 city_input = "null"
 state_input = "null"
 
-# Files that will be written to (names are changed later)
-output_directory_root = "output/raw_pickle/" # The top level output directory
-output_directory = "data" # The subdirectory that results will be written to
+class Scraper(object):
 
-# Used for self-imposed request limiting
-start_time = time.time()
-request_period_start_time = time.time()
-pages_traversed = 0
-pages_traversed_this_period = 0
-
-## Utility Functions ###########################################################
-
-# Initialize output directory
-def initialize_output_directory(directory_name):
-    global output_directory
-    output_directory = output_directory_root + "/" + directory_name
-    if (not os.path.exists(output_directory)):
-        os.makedirs(output_directory)
-    else:
-        print("Error: directory already exists")
-        raise Exception
-    print("Writing data and logs to %s/" % output_directory)
-    log("request_log.csv", "TIME,REQUESTS")
-    log("error_log.csv", "TIME,ERROR")
-    log("warning_log.csv", "TIME,ERROR")
-
-# Append to a log
-def log(filename, message):
-        file_object = open(output_directory + "/" + filename, "a")
-        file_object.write(message + "\n")
-        file_object.close()
-
-## Main Function ###############################################################
-# Get points of interest from the Google Maps API, given a latitude, longitude,
-# radius, and place type. The page argument is used internally to track the
-# recursion layers and the token argument is also used internally to pass tokens
-# to the next recursion.
-
-# Returns an array of points of interest
-
-def get_points_of_interest(latitude, longitude, radius_meters, place_type,
-                           subdivision_id_string,
-                           page = 1, retries = 0, token = "none"):
-
-    global pages_traversed
-    global pages_traversed_this_period
-    global request_period_start_time
-    combined_results = []
-
-    # Self-imposed rate limiting by using a loop
-    while (((time.time() - request_period_start_time) < period_length)
-           and (pages_traversed_this_period >= max_requests_per_period)):
-
-        print("Max requests per period reached. %f Seconds until next period."
-              % (period_length - (time.time() - request_period_start_time)))
-        time.sleep(10)
-
-    # End of period
-    if ((time.time() - request_period_start_time) >= period_length):
-
-        # Reset variables
-        request_period_start_time = time.time()
-        pages_traversed_this_period = 0
-
-        # For analysis: output time since program started and total requests
-        # made during this period
-        log(
-            "request_log.csv",
-            ("%f,%d" % ((time.time() - start_time), pages_traversed))
-        )
-
-        # Create a new output directory
-        initialize_output_directory((
-            "%s_%s_%s" % (
-                city_input, state_input, datetime.datetime.now().isoformat()
-            )
-        ).replace(" ", "_"))
-
-    print("Retrieving page %d" % page)
-
-    # Increment the counters
-    pages_traversed += 1
-    pages_traversed_this_period += 1
-
-    try:
-        # Only provide a page_token if the next_page_token was provided
-        if (token == "none"):
-            results = gmaps.places_nearby(
-                location = {
-                    "lat": latitude,
-                    "lng": longitude
-                },
-                radius = radius_meters,
-                type = place_type
-            )
+    def __init__(self, output_directory_root):
+        # The subdirectory that results will be written to (changed by the
+        # intialize_output_directory function later)
+        if (len(output_directory_root) == 0):
+            self.output_directory_root = "Untitled_Scrape"
         else:
-            results = gmaps.places_nearby(
-                location = {
-                    "lat": latitude,
-                    "lng": longitude
-                },
-                radius = radius_meters,
-                type = place_type,
-                page_token = token
-            )
+            self.output_directory_root = output_directory_root
+        self.output_directory = ""
 
-        # From https://developers.google.com/places/web-service/search:
-        # results to display." If the next_page_token exists, recurse and append
-        # to the combined_results array.
-        time.sleep(request_delay)
-        if "next_page_token" in results:
-            token = results["next_page_token"]
-            combined_results += get_points_of_interest(latitude, longitude,
-                                                       radius_meters,
-                                                       place_type,
-                                                       subdivision_id_string,
-                                                       page + 1, retries,
-                                                       token)
+        # Used for logging
+        self.start_time = time.time()
 
-        # Append the results list
-        combined_results += results["results"]
+        # Used for self-imposed request limiting
+        self.request_period_start_time = time.time()
+        self.traversed = 0
+        self.traversed_this_period = 0
 
-    except Exception as err:
-        print("Error: %s" % err)
-        # For analysis: output time since program started and the text of the
-        # error
-        log(
-            "error_log.csv",
-            ("%f,%s" % ((time.time() - start_time), err))
+        self.initialize_output_directory()
+
+    # Initialize output directory
+    def initialize_output_directory(self):
+        self.output_directory = "%s/%s" % (
+            self.output_directory_root, time.strftime("%Y-%m-%dT%H:%M:%S")
         )
+        os.makedirs(self.output_directory)
 
-        time.sleep(request_delay)
+        print("Writing data and logs to %s/" % self.output_directory)
 
-        # Retry
-        if (retries <= max_retries):
-            print("Retrying (attempt #%d)" % (retries + 1))
-            combined_results += get_points_of_interest(latitude, longitude,
-                                                       radius_meters,
-                                                       place_type,
-                                                       subdivision_id_string,
-                                                       page, retries + 1, token)
-        else:
-            print("Max retries exceeded; skipping this subdivision.")
-            log(
-                "warning_log.csv",
-                ("%f,%s. Subdivision ID: %s. Place type: %s. Coordinates: (%f, %f). Radius: %f" % (
-                    (time.time() - start_time),
-                    "Maximum number of retries exceeded",
-                    subdivision_id_string,
-                    place_type,
-                    latitude,
-                    longitude,
-                    radius_meters)
+        # Initialize logs
+        logs = {
+            "request_log.csv": "REQUESTS",
+            "error_log.csv": "ERROR",
+            "termination_log.csv": "REASON"
+        }
+        for log in logs.iterkeys():
+            _file = open("%s/%s" % (self.output_directory, log), "w")
+            _file.write("TIME,%s\n" % logs[log])
+            _file.close()
+
+    # Append to a log
+    def log(self, filename, message):
+            _file = open("%s/%s" % (self.output_directory, filename), "a")
+            _file.write("%f,%s\n" % (time.time() - self.start_time, message))
+            _file.close()
+
+    # Get points of interest from the Google Maps API, given a latitude,
+    # longitude, radius, and place type. The page argument is used internally to
+    # track the recursion layers and the token argument is also used internally
+    # to pass tokens to the next recursion.
+    # Returns an array of points of interest
+    def scrape_places_nearby(self, latitude, longitude, radius_meters,
+                             place_type, subdivision_id_string,
+                             page = 1, retries = 0, token = "none"):
+
+        combined_results = []
+
+        # Self-imposed rate limiting ###########################################
+        while (((time.time() - self.request_period_start_time) < PERIOD_LENGTH)
+               and (self.traversed_this_period >= MAX_REQUESTS_PER_PERIOD)):
+
+            print("Max requests per period reached. %f Seconds until next period."
+                  % (PERIOD_LENGTH - (time.time() - self.request_period_start_time)))
+            time.sleep(10)
+
+        # End of period
+        if ((time.time() - self.request_period_start_time) >= PERIOD_LENGTH):
+
+            # Reset variables
+            self.request_period_start_time = time.time()
+            self.traversed_this_period = 0
+
+            # For analysis: output time since program started and total requests
+            # made during this period
+            self.log("request_log.csv", self.traversed)
+
+            # Create a new output directory
+            self.initialize_output_directory()
+
+        # Scraping #############################################################
+        print("Retrieving page %d" % page)
+
+        # Increment the counters
+        self.traversed += 1
+        self.traversed_this_period += 1
+
+        try:
+            # Only provide a page_token if the next_page_token was provided
+            if (token == "none"):
+                results = gmaps.places_nearby(
+                    location = {
+                        "lat": latitude,
+                        "lng": longitude
+                    },
+                    radius = radius_meters,
+                    type = place_type
                 )
-            )
+            else:
+                results = gmaps.places_nearby(
+                    location = {
+                        "lat": latitude,
+                        "lng": longitude
+                    },
+                    radius = radius_meters,
+                    type = place_type,
+                    page_token = token
+                )
 
-        pass
+            # From https://developers.google.com/places/web-service/search:
+            # results to display." If the next_page_token exists, recurse and append
+            # to the combined_results array.
+            time.sleep(REQUEST_DELAY)
+            if "next_page_token" in results:
+                token = results["next_page_token"]
+                combined_results += self.scrape_places_nearby(latitude, longitude,
+                                                              radius_meters,
+                                                              place_type,
+                                                              subdivision_id_string,
+                                                              page + 1, retries,
+                                                              token)
 
-    # Return the combined results
-    return combined_results
+            # Append the results list
+            combined_results += results["results"]
 
-'''
-################################################################################
-# This is my old algorithm. It basically divide the entire city into small grid
-# and loop through.
+        except Exception as err:
+            print("Error: %s" % err)
+            # For analysis: output time since program started and the text of the
+            # error
+            self.log("error_log.csv", err)
 
-# Below the values are the boundaries for NYC. Keep them or change them to
-# Boston's boundary
-# To find the boundaries, go to google maps, put a city in the search box, and
-# the boundary will show up. You can roughly get the boundaries.
-# The boundaries do not have to be too accurate, but make sure they cover the
-# entire city
-# lat: 40.91 to 40.49
-# lon: -74.26 to -73.69
+            time.sleep(REQUEST_DELAY)
 
-lat_limits = list(numpy.arange(40.75, 40.751, 0.002))
-lon_limits = list(numpy.arange(-74.00, -73.96, 0.002))
+            # Retry
+            if (retries <= MAX_RETRIES):
+                print("Retrying (attempt #%d)" % (retries + 1))
+                combined_results += self.scrape_places_nearby(latitude, longitude,
+                                                              radius_meters,
+                                                              place_type,
+                                                              subdivision_id_string,
+                                                              page, retries + 1, token)
+            else:
+                print("Max retries exceeded; skipping this subdivision.")
+                self.log(
+                    "termination_log.csv",
+                    ("Maximum number of retries exceeded. Subdivision ID: %s. Place type: %s. Coordinates: (%f, %f). Radius: %f" % (
+                        subdivision_id_string,
+                        place_type,
+                        latitude,
+                        longitude,
+                        radius_meters
+                    ))
+                )
 
-# loop over types, latitudes, and longitudes.
-for place_type in place_types:
-    for lat_limit in lat_limits:
-        for lon_limit in lon_limits:
-                # for each pair of latitude and longitude, find the places within
-                # 200 meter radius.
-                results = get_points_of_interest(lat_limit, lon_limit, 200,
-                                                 place_type)
-                print lat_limit, lon_limit, place_type, len(results)
-                print("%s pages traversed" % pages_traversed)
+            pass
 
-                # save the results in a pickle file.
-                filename = open("NYC_new.p", "a+b")
-                pickle.dump(results, filename)
-                filename.close()
-'''
+        # Return the combined results
+        return combined_results
 
-################################################################################
-def extract_subdivisions(min_latitude, max_latitude, min_longitude,
-                         max_longitude, grid_width, place_type,
-                         subdivision_parent_id = "root",
-                         target_subdivision_id = ""):
+    def extract_subdivisions(self, min_latitude, max_latitude, min_longitude,
+                             max_longitude, grid_width, place_type,
+                             subdivision_parent_id = "root",
+                             target_subdivision_id = ""):
 
-    subdivision_id = 0
-    subdivision_width = (max_latitude - min_latitude)/grid_width
-    subdivision_height = (max_longitude - min_longitude)/grid_width
+        subdivision_id = 0
+        subdivision_width = (max_latitude - min_latitude)/grid_width
+        subdivision_height = (max_longitude - min_longitude)/grid_width
 
-    # If a target subdivision ID is supplied, skip to that subdivision
-    target_subdivision = 0
-    split_id = target_subdivision_id.split(" -> ")
-    if (target_subdivision_id != ""):
-        if (target_subdivision_id[:4] == "root"):
-            print("Skipping forward to %s\n" % target_subdivision_id)
-            target_subdivision = int(split_id[1])
-            split_id = split_id[2:]
-        else:
-            target_subdivision = int(split_id[0])
-            split_id = split_id[1:]
-    target_subdivision_id = " -> ".join(split_id)
+        # If a target subdivision ID is supplied, skip to that subdivision
+        target_subdivision = 0
+        split_id = target_subdivision_id.split(" -> ")
+        if (target_subdivision_id != ""):
+            if (target_subdivision_id[:4] == "root"):
+                print("Skipping forward to %s\n" % target_subdivision_id)
+                target_subdivision = int(split_id[1])
+                split_id = split_id[2:]
+            else:
+                target_subdivision = int(split_id[0])
+                split_id = split_id[1:]
+        target_subdivision_id = " -> ".join(split_id)
 
-    for row in range(grid_width):
-        for column in range(grid_width):
-            ## MATH PART #######################################################
-            # For example, a 3x3 grid of subdivisions with min_lat = 0,
-            # min_long = 0, max_lat = 3, max_long = 3 would look like this:
-            #
-            # lat
-            # ^
-            # 3 +---+---+---+
-            #   | 7 | 8 | 9 |
-            # 2 +---+---+---+
-            #   | 4 | 5 | 6 |
-            # 1 +---+---+---+
-            #   | 1 | 2 | 3 |
-            # 0 +---+---+---+
-            #   0   1   2   3 >long
-            #
-            # where the number inside each box corresponds to the order in
-            # which that box is processed
+        for row in range(grid_width):
+            for column in range(grid_width):
+                ## MATH PART ###################################################
+                # For example, a 3x3 grid of subdivisions with min_lat = 0,
+                # min_long = 0, max_lat = 3, max_long = 3 would look like this:
+                #
+                # lat
+                # ^
+                # 3 +---+---+---+
+                #   | 7 | 8 | 9 |
+                # 2 +---+---+---+
+                #   | 4 | 5 | 6 |
+                # 1 +---+---+---+
+                #   | 1 | 2 | 3 |
+                # 0 +---+---+---+
+                #   0   1   2   3 >long
+                #
+                # where the number inside each box corresponds to the order in
+                # which that box is processed
 
-            # The subdivision ID is used to track the current subdivision's
-            # ancestry. To find exactly where on a grid this subdivision lies,
-            # use the above table.
-            subdivision_id += 1
-            subdivision_id_string = (subdivision_parent_id + " -> "
-                                     + str(subdivision_id))
+                # The subdivision ID is used to track the current subdivision's
+                # ancestry. To find exactly where on a grid this subdivision
+                # lies, use the above table.
+                subdivision_id += 1
+                subdivision_id_string = (subdivision_parent_id + " -> "
+                                         + str(subdivision_id))
 
-            if (target_subdivision != 0):
-                if (target_subdivision == subdivision_id):
-                    print("Skipped to %s" % subdivision_id_string)
-                else:
-                    continue
+                # If a target subdivision is specified, skip all of the below
+                # logic and continue to the next loop
+                if (target_subdivision != 0):
+                    if (target_subdivision == subdivision_id):
+                        print("Skipped to %s" % subdivision_id_string)
+                    else:
+                        continue
 
-            # First, we need to establish the bounds of this subdivision
-            subdivision_min_latitude = (min_latitude
-                                        + (subdivision_width * float(row)))
-            subdivision_max_latitude = (subdivision_min_latitude
-                                        + subdivision_width)
-            subdivision_min_longitude = (min_longitude
-                                         + (subdivision_height * float(column)))
-            subdivision_max_longitude = (subdivision_min_longitude
-                                        + subdivision_height)
-            #print("Bottom left coords: (%f, %f)" % (subdivision_min_latitude,
-            #                                        subdivision_min_longitude))
-            #print("Top right coords: (%f, %f)" % (subdivision_max_latitude,
-            #                                      subdivision_max_longitude))
+                # First, we need to establish the bounds of this subdivision
+                subdivision_min_latitude = (min_latitude
+                                            + (subdivision_width * float(row)))
+                subdivision_max_latitude = (subdivision_min_latitude
+                                            + subdivision_width)
+                subdivision_min_longitude = (min_longitude
+                                             + (subdivision_height * float(column)))
+                subdivision_max_longitude = (subdivision_min_longitude
+                                            + subdivision_height)
 
-            # Then, we can establish the center and the radius of the circle
-            # needed to encompass the entire subdivision
-            subdivision_center_longitude = ((subdivision_min_longitude
-                                             + subdivision_max_longitude)/2)
-            subdivision_center_latitude = ((subdivision_min_latitude
-                                             + subdivision_max_latitude)/2)
+                # Then, we can establish the center and the radius of the circle
+                # needed to encompass the entire subdivision
+                subdivision_center_longitude = ((subdivision_min_longitude
+                                                 + subdivision_max_longitude)/2)
+                subdivision_center_latitude = ((subdivision_min_latitude
+                                                 + subdivision_max_latitude)/2)
 
-            # The haversine formula is used to convert the width and height
-            # from degrees into meters before finding the radius in meters
-            width_meters = geo.haversine(0, subdivision_min_longitude,
-                                         0, subdivision_max_longitude)
-            height_meters = geo.haversine(0, subdivision_min_latitude,
-                                          0, subdivision_max_latitude)
+                # The haversine formula is used to convert the width and height
+                # from degrees into meters before finding the radius in meters
+                width_meters = geo.haversine(0, subdivision_min_longitude,
+                                             0, subdivision_max_longitude)
+                height_meters = geo.haversine(0, subdivision_min_latitude,
+                                              0, subdivision_max_latitude)
 
-            # From there, we use the pythagorean theorem to find the radius
-            subdivision_radius_meters = (sqrt((width_meters/2)**2
-                                              + (height_meters/2)**2))
+                # From there, we use the pythagorean theorem to find the radius
+                subdivision_radius_meters = (sqrt((width_meters/2)**2
+                                                  + (height_meters/2)**2))
 
-            ## API PART ########################################################
-            # This bool will be changed to true if more recursions are necessary
-            make_subdivisions = False
+                ## API PART ####################################################
+                # This bool will be changed to true if more recursions are
+                # necessary
+                make_subdivisions = False
 
-            if (len(split_id) == 0) or ("" in split_id):
-                print("Subdivision ID: %s" % subdivision_id_string)
-                print("Center coords: (%f, %f)" % (subdivision_center_latitude,
-                                                   subdivision_center_longitude))
-                print("Radius: %f meters" % subdivision_radius_meters)
-                print("Extents: ")
-                print({
-                    "min_longitude": subdivision_min_longitude,
-                    "max_longitude": subdivision_max_longitude,
-                    "min_latitude": subdivision_min_latitude,
-                    "max_latitude": subdivision_max_latitude
-                })
-                visualizer.add_points([
-                    (subdivision_min_longitude, subdivision_min_latitude),
-                    (subdivision_max_longitude, subdivision_min_latitude),
-                    (subdivision_max_longitude, subdivision_max_latitude),
-                    (subdivision_min_longitude, subdivision_max_latitude),
-                    (subdivision_min_longitude, subdivision_min_latitude),
-                ])
-                print("Visualization: %s" % visualizer.generate_url())
-                visualizer.reset_points()
+                if (len(split_id) == 0) or ("" in split_id):
+                    print("Subdivision ID: %s" % subdivision_id_string)
+                    print("Center coords: (%f, %f)" % (subdivision_center_latitude,
+                                                       subdivision_center_longitude))
+                    print("Radius: %f meters" % subdivision_radius_meters)
+                    print("Extents: ")
+                    print({
+                        "min_longitude": subdivision_min_longitude,
+                        "max_longitude": subdivision_max_longitude,
+                        "min_latitude": subdivision_min_latitude,
+                        "max_latitude": subdivision_max_latitude
+                    })
+                    visualizer.add_points([
+                        (subdivision_min_longitude, subdivision_min_latitude),
+                        (subdivision_max_longitude, subdivision_min_latitude),
+                        (subdivision_max_longitude, subdivision_max_latitude),
+                        (subdivision_min_longitude, subdivision_max_latitude),
+                        (subdivision_min_longitude, subdivision_min_latitude),
+                    ])
+                    print("Visualization: %s" % visualizer.generate_url())
+                    visualizer.reset_points()
 
-                # If the radius of the subdivision exceeds the max, skip the result
-                # collection and recurse
-                if (subdivision_radius_meters > max_radius_meters):
-                    print("Making subdivisions because radius exceeded maximum")
-                    make_subdivisions = True
-
-                elif (subdivision_radius_meters < min_radius_meters):
-                    print("Terminating branch because radius is below the minimum")
-                    log(
-                        "warning_log.csv",
-                        ("%f,%s. Subdivision ID: %s. Place type: %s. Coordinates: (%f, %f). Radius: %f" % (
-                            (time.time() - start_time),
-                            "Radius fell below minimum value",
-                            subdivision_id_string,
-                            place_type,
-                            subdivision_center_latitude,
-                            subdivision_center_longitude,
-                            subdivision_radius_meters)
-                        )
-                    )
-
-                else:
-
-                    # Get results
-                    results = get_points_of_interest(subdivision_center_latitude,
-                                                     subdivision_center_longitude,
-                                                     subdivision_radius_meters,
-                                                     place_type,
-                                                     subdivision_id_string)
-                    print("%d results for place_type %s" % (len(results),
-                                                            place_type))
-                    print("%d pages traversed since program was started"
-                          % pages_traversed)
-
-                    # Save the results in a pickle file
-                    filename = open(output_directory + "/data.p", "a+b")
-                    pickle.dump(results, filename)
-                    filename.close()
-
-                    # If 60 results were returned, recurse
-                    if (len(results) == 60):
-                        print("Making subdivisions because max results were "
-                              + "returned")
+                    # If the radius of the subdivision exceeds the max, skip the result
+                    # collection and recurse
+                    if (subdivision_radius_meters > MAX_RADIUS_METERS):
+                        print("Making subdivisions because radius exceeded maximum")
                         make_subdivisions = True
 
-            else:
-                make_subdivisions = True
+                    elif (subdivision_radius_meters < MIN_RADIUS_METERS):
+                        print("Terminating branch because radius is below the minimum")
+                        self.log(
+                            "termination_log.csv",
+                            ("Radius fell below minimum value. Subdivision ID: %s. Place type: %s. Coordinates: (%f, %f). Radius: %f" % (
+                                subdivision_id_string,
+                                place_type,
+                                subdivision_center_latitude,
+                                subdivision_center_longitude,
+                                subdivision_radius_meters)
+                            )
+                        )
 
-            # Recurse if necessary
-            if (make_subdivisions):
-                print
-                extract_subdivisions(subdivision_min_latitude,
-                                     subdivision_max_latitude,
-                                     subdivision_min_longitude,
-                                     subdivision_max_longitude,
-                                     3, place_type,
-                                     subdivision_id_string,
-                                     target_subdivision_id)
-            else:
-                print("Branch terminated\n")
+                    else:
+
+                        # Get results
+                        results = self.scrape_places_nearby(subdivision_center_latitude,
+                                                            subdivision_center_longitude,
+                                                            subdivision_radius_meters,
+                                                            place_type,
+                                                            subdivision_id_string)
+                        print("%d results for place_type %s" % (len(results),
+                                                                place_type))
+                        print("%d pages traversed since program was started"
+                              % self.traversed)
+
+                        # Save the results in a pickle file
+                        filename = open(self.output_directory + "/data.p", "a+b")
+                        pickle.dump(results, filename)
+                        filename.close()
+
+                        # If 60 results were returned, recurse
+                        if (len(results) == 60):
+                            print("Making subdivisions because max results were "
+                                  + "returned")
+                            make_subdivisions = True
+
+                else:
+                    make_subdivisions = True
+
+                # Recurse if necessary
+                if (make_subdivisions):
+                    print
+                    self.extract_subdivisions(subdivision_min_latitude,
+                                              subdivision_max_latitude,
+                                              subdivision_min_longitude,
+                                              subdivision_max_longitude,
+                                              3, place_type,
+                                              subdivision_id_string,
+                                              target_subdivision_id)
+                else:
+                    print("Branch terminated\n")
 
 ## Program Initialization ######################################################
 
@@ -452,19 +414,22 @@ if (__name__ == "__main__"):
         city_extents = parse_tiger.get_extents(state_shapefile, city_input)
     print(city_extents)
 
-    initialize_output_directory((
-        "%s_%s_%s" % (
-            city_input, state_input, datetime.datetime.now().isoformat()
-        )
-    ).replace(" ", "_"))
+    scraper_output_directory_root = ("%s/%s_%s_%s" % (
+                                        OUTPUT_DIRECTORY_ROOT,
+                                        time.strftime("%Y-%m-%d"),
+                                        city_input, state_input
+                                    )).replace(" ", "_")
+    new_scraper = Scraper(scraper_output_directory_root)
 
     print
 
     # For each place_type, the subdivision -> extraction process is restarted
     # from scratch.
-    for place_type in place_types:
-        extract_subdivisions(city_extents["min_latitude"],
-                             city_extents["max_latitude"],
-                             city_extents["min_longitude"],
-                             city_extents["max_longitude"],
-                             3, place_type)
+    for place_type in PLACE_TYPES:
+        new_scraper.extract_subdivisions(city_extents["min_latitude"],
+                                        city_extents["max_latitude"],
+                                        city_extents["min_longitude"],
+                                        city_extents["max_longitude"],
+                                        3, place_type)
+
+    print("Finished scraping %s, %s" % (city_input, state_input))
