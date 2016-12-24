@@ -488,9 +488,9 @@ if (__name__ == "__main__"):
                                         time.strftime("%Y-%m-%d"),
                                         city_input, state_input, scrape_type
                                     )).replace(" ", "_")
-    new_scraper = Scraper(scraper_output_directory_root, scrape_type)
 
     print
+    new_scraper = Scraper(scraper_output_directory_root, scrape_type)
     print
 
     # For each place_type, the subdivision -> extraction process is restarted
