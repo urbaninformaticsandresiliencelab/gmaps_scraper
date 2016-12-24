@@ -197,6 +197,16 @@ class Scraper(object):
 
         if (attempt == MAX_RETRIES - 1):
             print("Max retries exceeded; skipping this subdivision.")
+            self.log(
+                "termination_log.csv",
+                ("Maximum number of retries exceeded. Subdivision ID: %s. Place type: %s. Coordinates: (%f, %f). Radius: %f" % (
+                    subdivision_id_string,
+                    place_type,
+                    latitude,
+                    longitude,
+                    radius_meters
+                ))
+            )
 
         return results
 
