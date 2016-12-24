@@ -62,8 +62,6 @@ def get_extents(shp_file, target = "full"):
     else:
         points = dump_points(shp_file, target)
 
-    print("%d Points for target \"%s\"" % (len(points), target))
-
     if (len(points) == 0):
         print("Error: no shape \"%s\" found in %s" % (target, shp_file))
         return False
