@@ -491,6 +491,7 @@ if (__name__ == "__main__"):
     new_scraper = Scraper(scraper_output_directory_root, scrape_type)
 
     print
+    print
 
     # For each place_type, the subdivision -> extraction process is restarted
     # from scratch.
