@@ -70,14 +70,32 @@ state_input = "null"
 
 class Scraper(object):
 
-    def __init__(self, output_directory_root):
+    def __init__(self, output_directory_root = "Untitled Scrape",
+                       scrape_type = "places_nearby"):
+        self.output_directory_root = output_directory_root
+
         # The subdirectory that results will be written to (changed by the
         # intialize_output_directory function later)
-        if (len(output_directory_root) == 0):
-            self.output_directory_root = "Untitled_Scrape"
-        else:
-            self.output_directory_root = output_directory_root
         self.output_directory = ""
+
+        # Configure the scrape functionality
+        # self.scrape points to one of the internal scrapers, all of which
+        # return an array of results and take the following arguments:
+        # latitude, longitude, radius_meters, place_type, subdivision_id_string
+        # self.max_results is an integer that describes the maximum number of
+        # results that a request will return, as defined by the Google Maps API
+        # documentation
+        if (scrape_type == "places_nearby"):
+            self.scrape = self.scrape_places_nearby
+            self.max_results = 60
+        elif (scrape_type == "places_radar"):
+            self.scrape = self.scrape_places_radar
+            self.max_results = 200
+        else:
+            print("Fatal: \"%s\" is not a valid scrape type" % scrape_type)
+        print("Configured scraper to scrape \"%s\"; max results = %d" % (
+            scrape_type, self.max_results
+        ))
 
         # Used for logging
         self.start_time = time.time()
@@ -145,10 +163,47 @@ class Scraper(object):
         self.traversed += 1
         self.traversed_this_period += 1
 
-    # Get points of interest from the Google Maps API, given a latitude,
-    # longitude, radius, and place type. The page argument is used internally to
-    # track the recursion layers and the token argument is also used internally
-    # to pass tokens to the next recursion.
+    # Get points of interest from the Google Maps API using the radar search
+    # Does not recurse because everything is returned by a single page
+    # Returns an array of points of interest
+    def scrape_places_radar(self, latitude, longitude, radius_meters,
+                            place_type, subdivision_id_string):
+
+        self.rate_limit() ######################################################
+
+        results = []
+
+        for attempt in range(MAX_RETRIES):
+            try:
+                results = gmaps.places_radar(
+                    location = {
+                        "lat": latitude,
+                        "lng": longitude
+                    },
+                    radius = radius_meters,
+                    type = place_type
+                )["results"]
+                time.sleep(REQUEST_DELAY)
+                break
+            except Exception as err:
+                print("Error: %s" % err)
+                # For analysis: output time since program started and the text of the
+                # error
+                self.log("error_log.csv", err)
+
+                time.sleep(REQUEST_DELAY)
+                pass
+            print("Retrying (attempt #%d)" % (attempt + 1))
+
+        if (attempt == MAX_RETRIES - 1):
+            print("Max retries exceeded; skipping this subdivision.")
+
+        return results
+
+    # Get points of interest from the Google Maps API using the places_nearby
+    # search. The page argument is used internally to track the recursion layers
+    # and the token argument is also used internally to pass tokens to the next
+    # recursion.
     # Returns an array of points of interest
     def scrape_places_nearby(self, latitude, longitude, radius_meters,
                              place_type, subdivision_id_string,
@@ -365,11 +420,11 @@ class Scraper(object):
                     else:
 
                         # Get results
-                        results = self.scrape_places_nearby(subdivision_center_latitude,
-                                                            subdivision_center_longitude,
-                                                            subdivision_radius_meters,
-                                                            place_type,
-                                                            subdivision_id_string)
+                        results = self.scrape(subdivision_center_latitude,
+                                              subdivision_center_longitude,
+                                              subdivision_radius_meters,
+                                              place_type,
+                                              subdivision_id_string)
                         print("%d results for place_type %s" % (len(results),
                                                                 place_type))
                         print("%d pages traversed since program was started"
@@ -381,9 +436,8 @@ class Scraper(object):
                         filename.close()
 
                         # If 60 results were returned, recurse
-                        if (len(results) == 60):
-                            print("Making subdivisions because max results were "
-                                  + "returned")
+                        if (len(results) == self.max_results):
+                            print("Making subdivisions because max results were returned")
                             make_subdivisions = True
 
                 else:
@@ -413,17 +467,18 @@ if (__name__ == "__main__"):
     # Prompt the user to enter a city
     city_extents = False
     while (not city_extents):
-        city_input = raw_input("Please specify a city or \"full\" for the entire "
-                               + "state: ")
+        city_input = raw_input("Please specify a city or \"full\" for the entire state: ")
         city_extents = parse_tiger.get_extents(state_shapefile, city_input)
-    print(city_extents)
 
-    scraper_output_directory_root = ("%s/%s_%s_%s" % (
+    scrape_type = ""
+    while (scrape_type != "places_radar") and (scrape_type != "places_nearby"):
+        scrape_type = raw_input("Please specify a scrape type (places_radar or places_nearby): ")
+    scraper_output_directory_root = ("%s/%s_%s_%s_%s" % (
                                         OUTPUT_DIRECTORY_ROOT,
                                         time.strftime("%Y-%m-%d"),
-                                        city_input, state_input
+                                        city_input, state_input, scrape_type
                                     )).replace(" ", "_")
-    new_scraper = Scraper(scraper_output_directory_root)
+    new_scraper = Scraper(scraper_output_directory_root, scrape_type)
 
     print
 
