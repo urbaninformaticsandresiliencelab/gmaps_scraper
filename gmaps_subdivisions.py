@@ -115,23 +115,16 @@ class Scraper(object):
             _file.write("%f,%s\n" % (time.time() - self.start_time, message))
             _file.close()
 
-    # Get points of interest from the Google Maps API, given a latitude,
-    # longitude, radius, and place type. The page argument is used internally to
-    # track the recursion layers and the token argument is also used internally
-    # to pass tokens to the next recursion.
-    # Returns an array of points of interest
-    def scrape_places_nearby(self, latitude, longitude, radius_meters,
-                             place_type, subdivision_id_string,
-                             page = 1, retries = 0, token = "none"):
+    # Self imposed rate limiting
+    # THIS MUST BE RUN ONCE BEFORE EVERY REQUEST
+    def rate_limit(self):
+        current_period_length = time.time() - self.request_period_start_time
+        # Hold up the script until the next period if the maximum number of
+        # requests per period were made
+        while ((current_period_length < PERIOD_LENGTH) and (self.traversed_this_period >= MAX_REQUESTS_PER_PERIOD)):
 
-        combined_results = []
-
-        # Self-imposed rate limiting ###########################################
-        while (((time.time() - self.request_period_start_time) < PERIOD_LENGTH)
-               and (self.traversed_this_period >= MAX_REQUESTS_PER_PERIOD)):
-
-            print("Max requests per period reached. %f Seconds until next period."
-                  % (PERIOD_LENGTH - (time.time() - self.request_period_start_time)))
+            print("Max requests per period reached (%d). %f Seconds until next period." % (
+                MAX_REQUESTS_PER_PERIOD, PERIOD_LENGTH - current_period_length))
             time.sleep(10)
 
         # End of period
@@ -148,13 +141,24 @@ class Scraper(object):
             # Create a new output directory
             self.initialize_output_directory()
 
-        # Scraping #############################################################
-        print("Retrieving page %d" % page)
-
         # Increment the counters
         self.traversed += 1
         self.traversed_this_period += 1
 
+    # Get points of interest from the Google Maps API, given a latitude,
+    # longitude, radius, and place type. The page argument is used internally to
+    # track the recursion layers and the token argument is also used internally
+    # to pass tokens to the next recursion.
+    # Returns an array of points of interest
+    def scrape_places_nearby(self, latitude, longitude, radius_meters,
+                             place_type, subdivision_id_string,
+                             page = 1, retries = 0, token = "none"):
+
+        self.rate_limit() ######################################################
+
+        combined_results = []
+
+        print("Retrieving page %d" % page)
         try:
             # Only provide a page_token if the next_page_token was provided
             if (token == "none"):
