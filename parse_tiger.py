@@ -34,6 +34,12 @@ def extract_extents(points):
         "max_longitude": max_longitude,
     }
 
+# Get the names of all shapes belonging to the given shapefile
+def dump_names(shp_file):
+    names = []
+    for shape_record in shapefile.Reader(shp_file).shapeRecords():
+        names.append(shape_record.record[4])
+    return names
 
 # Get all points belonging to the given shapes
 def dump_points(shp_file, name = "all"):
@@ -69,7 +75,7 @@ def get_extents(shp_file, target = "full"):
         info = extract_extents(points)
 
         if (target == "full"):
-            info["name"] = target
+            info["name"] = shp_file
         else:
             info["name"] = target
         return info
