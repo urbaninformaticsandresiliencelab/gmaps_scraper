@@ -68,34 +68,16 @@ gmaps = googlemaps.Client(
 city_input = "null"
 state_input = "null"
 
+# Main scraper class contains functionality for initialization and setting of
+# output directory, logging, and rate limiting
 class Scraper(object):
 
-    def __init__(self, output_directory_root = "Untitled Scrape",
-                       scrape_type = "places_nearby"):
-        self.output_directory_root = output_directory_root
+    def __init__(self, output_directory_name = "Untitled Scrape"):
+        self.output_directory_name = output_directory_name
 
         # The subdirectory that results will be written to (changed by the
         # intialize_output_directory function later)
         self.output_directory = ""
-
-        # Configure the scrape functionality
-        # self.scrape points to one of the internal scrapers, all of which
-        # return an array of results and take the following arguments:
-        # latitude, longitude, radius_meters, place_type, subdivision_id_string
-        # self.max_results is an integer that describes the maximum number of
-        # results that a request will return, as defined by the Google Maps API
-        # documentation
-        if (scrape_type == "places_nearby"):
-            self.scrape = self.scrape_places_nearby
-            self.max_results = 60
-        elif (scrape_type == "places_radar"):
-            self.scrape = self.scrape_places_radar
-            self.max_results = 200
-        else:
-            print("Fatal: \"%s\" is not a valid scrape type" % scrape_type)
-        print("Configured scraper to scrape \"%s\"; max results = %d" % (
-            scrape_type, self.max_results
-        ))
 
         # Used for logging
         self.start_time = time.time()
@@ -109,8 +91,9 @@ class Scraper(object):
 
     # Initialize output directory
     def initialize_output_directory(self):
-        self.output_directory = "%s/%s" % (
-            self.output_directory_root, time.strftime("%Y-%m-%dT%H:%M:%S")
+        self.output_directory = "%s/%s/%s" % (
+            OUTPUT_DIRECTORY_ROOT,
+            self.output_directory_name, time.strftime("%Y-%m-%dT%H:%M:%S")
         )
         os.makedirs(self.output_directory)
 
@@ -162,6 +145,32 @@ class Scraper(object):
         # Increment the counters
         self.traversed += 1
         self.traversed_this_period += 1
+
+# Subclass of Scraper that specifically scrapes points of interest by making
+# subdivisions
+class PlaceScraper(Scraper):
+
+    def __init__(self, output_directory_name, scrape_type = "places_nearby"):
+        Scraper.__init__(self, output_directory_name)
+
+        # Configure the scrape functionality
+        # self.scrape points to one of the internal scrapers, all of which
+        # return an array of results and take the following arguments:
+        # latitude, longitude, radius_meters, place_type, subdivision_id_string
+        # self.max_results is an integer that describes the maximum number of
+        # results that a request will return, as defined by the Google Maps API
+        # documentation
+        if (scrape_type == "places_nearby"):
+            self.scrape = self.scrape_places_nearby
+            self.max_results = 60
+        elif (scrape_type == "places_radar"):
+            self.scrape = self.scrape_places_radar
+            self.max_results = 200
+        else:
+            print("Fatal: \"%s\" is not a valid scrape type" % scrape_type)
+        print("Configured scraper to scrape \"%s\"; max results = %d" % (
+            scrape_type, self.max_results
+        ))
 
     # Get points of interest from the Google Maps API using the radar search
     # Does not recurse because everything is returned by a single page
@@ -483,14 +492,13 @@ if (__name__ == "__main__"):
     scrape_type = ""
     while (scrape_type != "places_radar") and (scrape_type != "places_nearby"):
         scrape_type = raw_input("Please specify a scrape type (places_radar or places_nearby): ")
-    scraper_output_directory_root = ("%s/%s_%s_%s_%s" % (
-                                        OUTPUT_DIRECTORY_ROOT,
+    scraper_output_directory_name = ("%s_%s_%s_%s" % (
                                         time.strftime("%Y-%m-%d"),
                                         city_input, state_input, scrape_type
                                     )).replace(" ", "_")
 
     print
-    new_scraper = Scraper(scraper_output_directory_root, scrape_type)
+    new_scraper = PlaceScraper(scraper_output_directory_name, scrape_type)
     print
 
     # For each place_type, the subdivision -> extraction process is restarted
