@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-## Library Imports #############################################################
 #from geopy.geocoders import GoogleV3
 from math import radians, cos, sin, asin, sqrt
 import cPickle as pickle
@@ -15,7 +14,6 @@ import parse_tiger
 import geo
 import staticmaps
 
-## Configuration ###############################################################
 # Attempt to load credentials
 try:
     import credentials
@@ -30,7 +28,7 @@ except:
                            "api_key = \"Enter key here\"\n")
     credentials_file.close()
     sys.exit(1)
-api_key = credentials.api_key
+API_KEY = credentials.api_key
 
 # There are 96 types of places that can be acquired
 PLACE_TYPES = ["accounting","airport","amusement_park","aquarium","art_gallery","atm","bakery","bank","bar","beauty_salon","bicycle_store","book_store","bowling_alley","bus_station","cafe","campground","car_dealer","car_rental","car_repair","car_wash","casino","cemetery","church","city_hall","clothing_store","convenience_store","courthouse","dentist","department_store","doctor","electrician","electronics_store","embassy","fire_station","florist","funeral_home","furniture_store","gas_station","general_contractor","gym","hair_care","hardware_store","hindu_temple","home_goods_store","hospital","insurance_agency","jewelry_store","laundry","lawyer","library","liquor_store","local_government_office","locksmith","lodging","meal_delivery","meal_takeaway","mosque","movie_rental","movie_theater","moving_company","museum","night_club","painter","park","parking","pet_store","pharmacy","physiotherapist","plumber","police","post_office","real_estate_agency","restaurant","roofing_contractor","rv_park","school","shoe_store","shopping_mall","spa","stadium","storage","store","subway_station","synagogue","taxi_stand","train_station","transit_station","travel_agency","university","veterinary_care","zoo"]
@@ -57,16 +55,11 @@ MAX_RETRIES = 5
 # Files that will be written to (names are changed later)
 OUTPUT_DIRECTORY_ROOT = "output/raw_pickle/" # The top level output directory
 
-## Variables Used Internally ###################################################
 # Google Maps API client object
 gmaps = googlemaps.Client(
-    key = api_key,
+    key = API_KEY,
     timeout = 600
 )
-
-# Used during interactive input (changed later)
-city_input = "null"
-state_input = "null"
 
 # Main scraper class contains functionality for initialization and setting of
 # output directory, logging, and rate limiting
@@ -620,12 +613,14 @@ class PlaceScraper(Scraper):
 ## Program Initialization ######################################################
 
 if (__name__ == "__main__"):
+    city_input = "null"
     # Prompt the user to enter a state
     while (not os.path.isdir("tiger-2016/" + state_input)):
         state_input = raw_input("Please specify a state: ")
     state_shapefile = glob.glob("tiger-2016/" + state_input + "/*.shp")[0]
 
     # Prompt the user to enter a city
+    state_input = "null"
     city_extents = False
     while (not city_extents):
         city_input = raw_input("Please specify a city or \"full\" for the entire state: ")
