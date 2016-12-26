@@ -13,7 +13,7 @@ import sys
 
 import parse_tiger
 import geo
-import visualizer
+import staticmaps
 
 ## Configuration ###############################################################
 # Attempt to load credentials
@@ -224,6 +224,8 @@ class PlaceScraper(Scraper):
         max_results = A digit that describes the maximum number of results that
             the main scraping function can return, as defined by the Google Maps
             API documentation.
+        gsm: a staticmaps.Constructor object used for generating Google Static
+            Maps API links.
     """
 
     def __init__(self, output_directory_name, scrape_type = "places_nearby"):
@@ -237,6 +239,8 @@ class PlaceScraper(Scraper):
             self.max_results = 200
         else:
             print("Fatal: \"%s\" is not a valid scrape type" % scrape_type)
+
+        self.gsm = staticmaps.Constructor()
 
         print("Configured scraper to scrape \"%s\"; max results = %d" % (
             scrape_type, self.max_results
@@ -546,15 +550,14 @@ class PlaceScraper(Scraper):
                         "min_latitude": subdivision_min_latitude,
                         "max_latitude": subdivision_max_latitude
                     })
-                    visualizer.add_points([
-                        (subdivision_min_longitude, subdivision_min_latitude),
-                        (subdivision_max_longitude, subdivision_min_latitude),
-                        (subdivision_max_longitude, subdivision_max_latitude),
-                        (subdivision_min_longitude, subdivision_max_latitude),
-                        (subdivision_min_longitude, subdivision_min_latitude),
-                    ])
-                    print("Visualization: %s" % visualizer.generate_url())
-                    visualizer.reset_points()
+                    self.gsm.add_coords([
+                        [subdivision_min_longitude, subdivision_min_latitude],
+                        [subdivision_max_longitude, subdivision_min_latitude],
+                        [subdivision_max_longitude, subdivision_max_latitude],
+                        [subdivision_min_longitude, subdivision_max_latitude]
+                    ], "polygon")
+                    print("Visualization: %s" % self.gsm.generate_url())
+                    self.gsm.reset()
 
                     # If the radius of the subdivision exceeds the max, skip the result
                     # collection and recurse
