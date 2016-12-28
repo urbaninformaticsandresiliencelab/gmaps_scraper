@@ -12,18 +12,18 @@ import time
 
 ## Configuration ###############################################################
 
-pickle_directory = "output/raw_pickle/" # Where to look for pickles
+PICKLE_DIRECTORY = "output/raw_pickle/" # Where to look for pickles
 
-json_directory = "output/json/" # Where to save JSON files
+JSON_DIRECTORY = "output/json/" # Where to save JSON files
 
-min_update_interval = 60 # Actual interval may be slightly longer than this
+MIN_UPDATE_INTERVAL = 60 # Actual interval may be slightly longer than this
 
-threads = 3 # More threads also use more memory so be careful
+THREADS = 3 # More THREADS also use more memory so be careful
 
 ## Variables Used Internally ###################################################
 # Used for logging
-start_time = time.time()
-colours = {
+START_TIME = time.time()
+COLOURS = {
     "red": "\033[91m",
     "blue": "\033[94m",
     "green": "\033[92m",
@@ -35,11 +35,11 @@ colours = {
 def update_progress(status, main_label, secondary_label = "", colour = "white"):
     colour_start = ""
     colour_end = ""
-    if (colour != "white") and (colour in colours):
-        colour_start = colours[colour]
-        colour_end = colours["end"]
+    if (colour != "white") and (colour in COLOURS):
+        colour_start = COLOURS[colour]
+        colour_end = COLOURS["end"]
 
-    timestamp = time.time() - start_time
+    timestamp = time.time() - START_TIME
     if (type(status) is float):
         print("%6d %s%8.3f%%%s %55s %s" % (timestamp, colour_start, status,
                                            colour_end, main_label,
@@ -54,7 +54,7 @@ def create_json(root_directory):
     seen_place_ids = []
     data = []
 
-    output_file = "%s/%s.json" % (json_directory, root_directory_basename)
+    output_file = "%s/%s.json" % (JSON_DIRECTORY, root_directory_basename)
     if (os.path.isfile(output_file)):
         update_progress("Skipped", root_directory_basename, "already exists",
                         colour = "blue")
@@ -89,7 +89,7 @@ def create_json(root_directory):
 
                     # Logging
                     current_time = time.time()
-                    if (current_time - last_update > min_update_interval):
+                    if (current_time - last_update > MIN_UPDATE_INTERVAL):
                         update_progress(
                             float(seek_since_last_pickle + data_pickle_object.tell())/total_size*100,
                             root_directory_basename,
@@ -112,9 +112,9 @@ def create_json(root_directory):
 ## Start Converting ############################################################
 if (__name__ == "__main__"):
     root_directories = []
-    pool = multiprocessing.Pool(threads)
+    pool = multiprocessing.Pool(THREADS)
 
-    for root_directory in glob.glob("%s/*" % pickle_directory):
+    for root_directory in glob.glob("%s/*" % PICKLE_DIRECTORY):
         if os.path.isdir(root_directory):
             root_directories.append(root_directory)
 

@@ -16,7 +16,7 @@ def point_in_polygon(point, polygon):
     the point lies outside.
 
     Args:
-        point: A coordinate pair to be tested.
+        point: A (longitude, latitude) coordinate pair to be tested.
         polygon: An array of coordinate pairs representing the polygon. The last
             line segment is created between the first item in the array and the
             last item in the array.
@@ -26,8 +26,9 @@ def point_in_polygon(point, polygon):
     """
 
     intersections = 0
+    num_coordinate_pairs = len(polygon)
 
-    for i in range(len(polygon)):
+    for i in range(num_coordinate_pairs):
         lng = [polygon[i][0]]
         lat = [polygon[i][1]]
 
