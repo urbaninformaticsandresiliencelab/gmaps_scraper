@@ -5,7 +5,7 @@ from math import radians, cos, sin, asin, sqrt
 import cPickle as pickle
 import googlemaps
 import glob
-#import numpy
+import json
 import os
 import time
 import sys
@@ -191,16 +191,117 @@ class Scraper(object):
         self.traversed += 1
         self.traversed_this_period += 1
 
-# Subclass of Scraper that specifically scrapes place details
+    def dump_data(self, data):
+        """ Dump data to a pickle
+
+        Args:
+            data: The data structure to be dumped
+        """
+
+        output_file_object = open(self.output_directory + "/data.p", "a+b")
+        pickle.dump(data, output_file_object)
+        output_file_object.close()
+
 class DetailScraper(Scraper):
+    """ Subclass of Scraper that specifically scrapes place details
 
-    def __init__(self, output_directory_name):
+    Attributes:
+        dump_interval
+    """
+
+    def __init__(self, output_directory_name, dump_interval = 50):
+        """ Initializes DetailScraper class
+
+        Args:
+            output_directory_name: A directory which is a subdivision of
+                OUTPUT_DIRECTORY_ROOT where scraped data and logs will be
+                stored.
+            dump_interval: An integer representing the number of place_ids
+                traversed between each dump
+        """
+
         Scraper.__init__(self, output_directory_name)
+        self.dump_interval = dump_interval
 
-# Subclass of Scraper that specifically scrapes points of interest by making
-# subdivisions
+    def scrape(self, target):
+        """ The main function of DetailScraper
+
+        Scrapes a list of place_ids using the Google Maps API's place details
+        API.
+
+        Args:
+            target: One of the following:
+                * A string containing the path to a JSON file which has been
+                  created by process_output.py.
+                * A string containing a single place_id
+                * A list or tuple containing place_ids
+        """
+
+        place_ids = []
+        results = []
+        counter = 1
+
+        if (type(target) is str):
+            if (os.path.isfile(target)) and (target[-5:] == ".json"):
+                file_object = open(target)
+                for datum in json.load(file_object):
+                    place_ids.append(datum["place_id"])
+                file_object.close()
+                print("Added %d place_ids from %s" % (len(place_ids), target))
+            else:
+                place_ids.append(target)
+        elif (type(target) is list) or (type(target) is tuple):
+            if (type(target[0]) is str):
+                place_ids += target
+
+        if (len(place_ids) == 0):
+            raise Exception("Invalid target supplied")
+
+        num_place_ids = len(place_ids)
+        for place_id in place_ids:
+
+            self.rate_limit() ##################################################
+
+            # Dump results periodically
+            if ((counter % self.dump_interval) == 0):
+                print("Dumping last %d results" % self.dump_interval)
+                self.dump_data(results)
+                results = []
+
+            print("Scraping place_id %s (%d/%d - %0.3f%%)" % (
+                place_id, counter, num_place_ids,
+                float(counter)/num_place_ids*100,
+            ))
+
+            for attempt in range(MAX_RETRIES):
+                try:
+                    results.append(gmaps.place(place_id)["result"])
+                    time.sleep(REQUEST_DELAY)
+                    break
+                except Exception as err:
+                    print("Error: %s" % err)
+                    # For analysis: output time since program started and the text of the
+                    # error
+                    self.log("error_log.csv", err)
+
+                    time.sleep(REQUEST_DELAY)
+                    pass
+                print("Retrying (attempt #%d)" % (attempt + 1))
+
+            if (attempt == MAX_RETRIES - 1):
+                print("Max retries exceeded; skipping this place_id.")
+                self.log(
+                    "termination_log.csv",
+                    ("Maximum number of retries exceeded. place_id: %s" % place_id)
+                )
+
+            counter += 1
+
+        # Dump remaining results to a pickle file
+        self.dump_data(results)
+
 class PlaceScraper(Scraper):
-    """ Subclass of Scraper specifically for scraping places
+    """ Subclass of Scraper specifically for scraping places using subdivisions
 
     A subclass of the Scraper class that contains functionality for scraping all
     of the places in a given area by scraping subdivisions of that area.
@@ -222,6 +323,16 @@ class PlaceScraper(Scraper):
     """
 
     def __init__(self, output_directory_name, scrape_type = "places_nearby"):
+        """ Initializes PlaceScraper class
+
+        Args:
+            output_directory_name: A directory which is a subdivision of
+                OUTPUT_DIRECTORY_ROOT where scraped data and logs will be
+                stored.
+            scrape_type: A string describing which requests to use, which may
+                be either places_nearby or places_radar
+        """
+
         Scraper.__init__(self, output_directory_name)
 
         if (scrape_type == "places_nearby"):
@@ -401,10 +512,10 @@ class PlaceScraper(Scraper):
 
         return combined_results
 
-    def extract_subdivisions(self, min_latitude, max_latitude, min_longitude,
-                             max_longitude, grid_width, place_type,
-                             subdivision_parent_id = "root",
-                             target_subdivision_id = ""):
+    def scrape_subdivisions(self, min_latitude, max_latitude, min_longitude,
+                            max_longitude, grid_width, place_type,
+                            subdivision_parent_id = "root",
+                            target_subdivision_id = ""):
         """ Recursive function that creates subdivisions and invokes the scraper
 
         This is the main function that manages the creation of subdivisions and
@@ -585,9 +696,7 @@ class PlaceScraper(Scraper):
                               % self.traversed)
 
                         # Save the results in a pickle file
-                        filename = open(self.output_directory + "/data.p", "a+b")
-                        pickle.dump(results, filename)
-                        filename.close()
+                        self.dump_data(results)
 
                         # If 60 results were returned, recurse
                         if (len(results) == self.max_results):
@@ -600,7 +709,7 @@ class PlaceScraper(Scraper):
                 # Recurse if necessary
                 if (make_subdivisions):
                     print
-                    self.extract_subdivisions(subdivision_min_latitude,
+                    self.scrape_subdivisions(subdivision_min_latitude,
                                               subdivision_max_latitude,
                                               subdivision_min_longitude,
                                               subdivision_max_longitude,
@@ -613,14 +722,14 @@ class PlaceScraper(Scraper):
 ## Program Initialization ######################################################
 
 if (__name__ == "__main__"):
-    city_input = "null"
+    state_input = "null"
     # Prompt the user to enter a state
     while (not os.path.isdir("tiger-2016/" + state_input)):
         state_input = raw_input("Please specify a state: ")
     state_shapefile = glob.glob("tiger-2016/" + state_input + "/*.shp")[0]
 
     # Prompt the user to enter a city
-    state_input = "null"
+    city_input = "null"
     city_extents = False
     while (not city_extents):
         city_input = raw_input("Please specify a city or \"full\" for the entire state: ")
@@ -641,7 +750,7 @@ if (__name__ == "__main__"):
     # For each place_type, the subdivision -> extraction process is restarted
     # from scratch.
     for place_type in PLACE_TYPES:
-        new_scraper.extract_subdivisions(city_extents["min_latitude"],
+        new_scraper.scrape_subdivisions(city_extents["min_latitude"],
                                         city_extents["max_latitude"],
                                         city_extents["min_longitude"],
                                         city_extents["max_longitude"],

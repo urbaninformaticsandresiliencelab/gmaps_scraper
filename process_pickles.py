@@ -56,11 +56,11 @@ def update_progress(status, main_label, secondary_label = "", colour = "white"):
 
     timestamp = time.time() - START_TIME
     if (type(status) is float):
-        print("%6d %s%8.3f%%%s %55s %s" % (timestamp, colour_start, status,
+        print("%6d %s%8.3f%%%s %60s %s" % (timestamp, colour_start, status,
                                            colour_end, main_label,
                                            secondary_label))
     else:
-        print("%6d %s%9s%s %55s %s" % (timestamp, colour_start, status,
+        print("%6d %s%9s%s %60s %s" % (timestamp, colour_start, status,
                                        colour_end, main_label, secondary_label))
 
 def archive(scrape_path):
@@ -176,7 +176,7 @@ if (__name__ == "__main__"):
         if os.path.isdir(scrape_path):
             scrape_paths.append(scrape_path)
 
-    print("  TIME    STATUS                                                   LABEL INFO")
+    print("  TIME    STATUS                                                        LABEL INFO")
     pool.map(process, scrape_paths)
     pool.close()
     pool.join()
