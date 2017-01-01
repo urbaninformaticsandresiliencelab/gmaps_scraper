@@ -1,5 +1,6 @@
 #!/usr/bin/python
-# Merge and deduplicate data, writing the result as a JSON
+# Merge and deduplicate data, writing the result as a JSON, and compress the
+# source files as .tar.xz.
 
 import glob
 import json
