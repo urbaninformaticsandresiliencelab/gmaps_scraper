@@ -722,29 +722,52 @@ class PlaceScraper(Scraper):
 ## Program Initialization ######################################################
 
 if (__name__ == "__main__"):
-    state_input = "null"
-    # Prompt the user to enter a state
-    while (not os.path.isdir("tiger-2016/" + state_input)):
-        state_input = raw_input("Please specify a state: ")
-    state_shapefile = glob.glob("tiger-2016/" + state_input + "/*.shp")[0]
+    from optparse import OptionParser
 
-    # Prompt the user to enter a city
-    city_input = "null"
-    city_extents = False
-    while (not city_extents):
-        city_input = raw_input("Please specify a city or \"full\" for the entire state: ")
-        city_extents = parse_tiger.get_extents(state_shapefile, city_input)
+    parser = OptionParser()
+    parser.add_option("--state", dest = "state", metavar = "STATE",
+                      help = "Use the shapefile located in tiger-2016/STATE",
+                      default = "null")
+    parser.add_option("--city", dest = "city", metavar = "CITY",
+                      help = "Scrape the CITY shape in the chosen shapefile",
+                      default = "null")
+    parser.add_option("--type", dest = "type", metavar = "TYPE",
+                      help = "Use a scraper of the specified TYPE. Types: "
+                             "places_nearby, places_radar")
+    parser.add_option("--outdir", dest = "outdir", metavar = "OUTDIR",
+                      help = "Write all results to subdirectories of OUTDIR")
+    (options, args) = parser.parse_args()
 
-    scrape_type = ""
-    while (scrape_type != "places_radar") and (scrape_type != "places_nearby"):
-        scrape_type = raw_input("Please specify a scrape type (places_radar or places_nearby): ")
-    scraper_output_directory_name = ("%s_%s_%s_%s" % (
-                                        time.strftime("%Y-%m-%d"),
-                                        city_input, state_input, scrape_type
-                                    )).replace(" ", "_")
+    if (not os.path.isdir("tiger-2016/" + options.state)):
+        print("Please specify a valid state with --state. See --help for more "
+              "info. Possible states:")
+        print(", ".join(sorted(os.listdir("tiger-2016/"))))
+        sys.exit(1)
+    state_shapefile = glob.glob("tiger-2016/" + options.state + "/*.shp")[0]
+
+    city_extents = parse_tiger.get_extents(state_shapefile, options.city)
+    if (not city_extents):
+        print("Please specify a valid city with --city. See --help for more "
+              "info. Possible states:")
+        print(", ".join(sorted(parse_tiger.dump_names(state_shapefile))))
+        sys.exit(1)
+
+    if (options.type != "places_radar") and (options.type != "places_nearby"):
+        print("Please specify a scrape type with --type. See --help for more "
+                "info.\nPossible types: places_nearby, places_radar")
+        sys.exit(1)
+
+    if (options.outdir):
+        scraper_output_directory_name = options.outdir
+    else:
+        scraper_output_directory_name = ("%s_%s_%s_%s" % (
+                                            time.strftime("%Y-%m-%d"),
+                                            options.city, options.state,
+                                            options.type
+                                        )).replace(" ", "_")
 
     print
-    new_scraper = PlaceScraper(scraper_output_directory_name, scrape_type)
+    new_scraper = PlaceScraper(scraper_output_directory_name, options.type)
     print
 
     # For each place_type, the subdivision -> extraction process is restarted
@@ -754,6 +777,6 @@ if (__name__ == "__main__"):
                                         city_extents["max_latitude"],
                                         city_extents["min_longitude"],
                                         city_extents["max_longitude"],
-                                        3, place_type)
+                                        3, options.type)
 
-    print("Finished scraping %s, %s" % (city_input, state_input))
+    print("Finished scraping %s, %s" % (options.city, options.state))
