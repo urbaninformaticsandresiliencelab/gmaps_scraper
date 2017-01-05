@@ -92,7 +92,7 @@ def process_pickle(pickle_path):
             break
 
     # %s is used instead of %d because redis returns strings
-    update_progress("Finished", pickle_path.split("/")[2],
+    update_progress("Merged", pickle_path.split("/")[2],
                     "Pickle %s of %s" % (place_id_db.incr("num_pickles_finished"),
                                          place_id_db.get("num_pickles")),
                     colour = "blue")

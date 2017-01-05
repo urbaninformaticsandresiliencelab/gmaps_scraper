@@ -777,6 +777,6 @@ if (__name__ == "__main__"):
                                         city_extents["max_latitude"],
                                         city_extents["min_longitude"],
                                         city_extents["max_longitude"],
-                                        3, options.type)
+                                        3, place_type)
 
     print("Finished scraping %s, %s" % (options.city, options.state))
