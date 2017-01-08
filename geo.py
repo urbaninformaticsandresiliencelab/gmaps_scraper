@@ -40,8 +40,8 @@ def point_in_polygon(point, polygon):
             lat.append(polygon[i + 1][1])
 
         # The smaller point should be the bottom-left point
-        lng.sort()
-        lat.sort()
+        lng = sorted(lng)
+        lat = sorted(lat)
 
         # The ray intersects with the line segment if:
         #     lat_1 <= point_lat <= lat_2

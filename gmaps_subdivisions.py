@@ -558,6 +558,9 @@ class PlaceScraper(Scraper):
         example, the bottom left subdivision of the top right subdivision of the
         root cell has the ID "root -> 9 -> 1".
 
+        To re-scrape a subdivision, all arguments except subdivision_parent_id
+        must be supplied.
+
         Args:
             min_latitude, max_latitude, min_longitude, max_longitude: Floating
                 points describing the bounds of the scraping region

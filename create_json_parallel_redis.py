@@ -156,7 +156,7 @@ if (__name__ == "__main__"):
         os.makedirs(JSON_DIRECTORY)
 
     print("Available scrapes:")
-    print("\n".join(glob.glob("%s/*" % PICKLE_DIRECTORY)))
+    print("\n".join(sorted(glob.glob("%s/*" % PICKLE_DIRECTORY))))
     scrape_path = "null"
     while (not os.path.isdir(scrape_path)):
         scrape_path = raw_input("Please choose a scrape to process: ")
