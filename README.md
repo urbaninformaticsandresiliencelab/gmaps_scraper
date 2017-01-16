@@ -2,18 +2,17 @@ gmaps-scraper
 =============
 
 *gmaps-scraper* is a suite of tools designed to facilitate the scraping and
-processing of place data using the Google Maps API. The suite contains the
-following tools:
+processing of place data using the Google Maps API.
 
 Table of Contents
 =================
 Code Overview
 -------------
-For scraping:
+For craping:
 
 * gmaps\_subdivisions.py - The main scraping script.
 
-For Processing:
+For processing:
 
 * process\_pickles.py - A script to automate the archiving of pickles and the
   creation of merged and deduplicated JSONs.
@@ -113,12 +112,14 @@ Due to the nature of the scraper, the output pickle files, which are appended to
 after every successful request, contain a massive amount of duplicates. The
 *process\_pickles.py* script is responsible for automating the deduplication of
 scrape data. The script:
+
 * Obtains a list of all scrapes in *gmaps\_subdivisions.py*'s output directory
     by using the glob library.
 * For each scrape, merge and deduplicate the pickled data if a JSON does not
     exist yet.
 * For each scrape, compress the pickled data into a .tar.xz file if one does not
     exist yet.
+
 The script utilizes Python's multiprocessing library to make fuller use of
 system resources by doing multiple merges and compressions at the same time. The
 number of worker processes is defined by the *THREADS* constant, which is, by
@@ -139,6 +140,7 @@ geo.py
 ------
 *geo.py* is a small library providing primitive geometric functions that are
 used in *gmaps\_subdivisions.py*. Functions included:
+
 * point\_in\_polygon - A function that returns True if a point is in a polygon
     and False if otherwise.
 * haversine and law\_of\_cosines - Calculate the distance between two points on
@@ -148,6 +150,7 @@ parse\_tiger.py
 ---------------
 parse\_tiger.py provides simple wrapper operations tailored for processing US
 Census TIGER shapefiles. Functions included:
+
 * dump\_names - Return an array of all places included in a shapefile.
 * dump\_points - Return an array of all points included in a shapefile. This can
     be narrowed down to a single city.
@@ -158,6 +161,7 @@ staticmaps.py
 -------------
 *staticmaps.py* provides a Constructor class which is used to generate valid
 Google Static Maps API URLs. Class methods:
+
 * generate\_url - Combine stored shapes into a single URL.
 * add\_coords - Add coordinates to the current static map in the form of
     individual markers, a path, or a polygon..
