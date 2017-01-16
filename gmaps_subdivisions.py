@@ -521,9 +521,9 @@ class PlaceScraper(Scraper):
         This is the main function that manages the creation of subdivisions and
         invokes the scraper to scrape places from those subdivisions.
 
-        Subdivisions are congruent rectangular researches which are similar to
-        the region defined in the function's arguments. All subdivisions have
-        the same width and height and are arranged in a square grid.
+        Subdivisions are congruent rectangular areas which are similar to the
+        region defined in the function's arguments. All subdivisions have the
+        same width and height and are arranged in a square grid.
 
         For example, a 3x3 grid of subdivisions with min_lat = 0, min_long = 0,
         max_lat = 3, max_long = 3 would look like this:
