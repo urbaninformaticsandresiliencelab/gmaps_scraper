@@ -10,23 +10,31 @@ Table of Contents
 Code Overview
 -------------
 For scraping:
+
 * gmaps\_subdivisions.py - The main scraping script.
+
 For Processing:
+
 * process\_pickles.py - A script to automate the archiving of pickles and the
-    creation of merged and deduplicated JSONs.
+  creation of merged and deduplicated JSONs.
 * create\_json\_parallel\_redis.py - A script to process a single pickle
-    collection very fast by using Redis as a shared memory store for multiple
-    worker processes.
+  collection very fast by using Redis as a shared memory store for multiple
+  worker processes.
+
 Additional libraries used by the scraper:
+
 * geo.py - A library providing various geometric functions such as the haversine
     formula, the law of cosines, and a function for point-in-polygon.
 * parse\_tiger.py - A library providing wrapper functions for parsing the US
     Census TIGER data by using the shapefile library.
 * staticmaps.py - A library that generates valid Google Static Maps API URLs for
     visualizing areas on Google Maps.
+
 Utility scripts:
+
 * scrape\_tiger.sh - Scrape and process US Census TIGER data for use by the
     various scripts.
+
 Setup
 -----
 Usage
@@ -41,9 +49,10 @@ Scripts are documented internally and formatted in accordance with [Google's
 Python styleguide](https://google.github.io/styleguide/pyguide.html). For more
 in-depth documentation, refer to the comments and docstrings located in each
 script.
+
 gmaps\_subdivisions.py
 ----------------------
-*gmaps\_subdivisions.py* scrapes places from Google Maps by subdividing a chosen
+*gmaps_subdivisions.py* scrapes places from Google Maps by subdividing a chosen
 area into smaller areas and making a requests for places in that area, making
 further subdivisions if the maximum number of requests, as defined by the
 [Google Places API Web Service documentation](https://developers.google.com/places/web-service/search).
@@ -183,6 +192,7 @@ Usage
 =====
 As in the setup, you must cd into this directory before running any of the
 scripts.
+
 Scraping
 --------
 To scrape a city, supply the necessary arguments to *gmaps_subdivisions.py*.
