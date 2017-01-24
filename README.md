@@ -56,7 +56,7 @@ area into smaller areas and making a requests for places in that area, making
 further subdivisions if the maximum number of requests, as defined by the
 [Google Places API Web Service documentation](https://developers.google.com/places/web-service/search).
 More information about the scraping algorithm is documented in the
-*scrape_subdivisions* method of the *PlaceScraper* class. From the script:
+*scrape_subdivisions* method of the *SubdivisionScraper* class. From the script:
 
     This is the main function that manages the creation of subdivisions and
     invokes the scraper to scrape places from those subdivisions.
@@ -105,6 +105,21 @@ exhibit strange behaviour:
 
     To re-scrape a subdivision, all arguments except subdivision_parent_id
     must be supplied.
+
+*gmaps_subdivisions.py* provides the following classes:
+
+* Scraper: A class for building generic Google Maps API scrapers
+    * DetailScraper: A child class of Scraper built for scraping place details
+    * SubdivisionScraper: A child class of Scraper meant for building scrapers
+      that use the subdivisions algorithm, defined above.
+        * PlacesNearbyScraper: A child class of SubdivisionScraper built for
+          scraping the places_nearby API call.
+        * PlacesRadarScraper: A child class of SubdivisionScraper built for
+          scraping the places_radar API call. This currently has buggy behaviour
+          and PlacesNearbyScraper should be used instead.
+        * PlacesTextScraper: A child class of SubdivisionScraper built for
+          scraping the places_radar API call, filtering results by using a
+          given keyword.
 
 process\_pickles.py
 -------------------

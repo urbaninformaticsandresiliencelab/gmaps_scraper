@@ -396,14 +396,20 @@ class DetailScraper(Scraper):
         self.dump_data(results)
 
 class SubdivisionScraper(Scraper):
-    """ Subclass of Scraper specifically for scraping places using subdivisions
+    """ Subclass of Scraper specifically for building scrapers that use the
+    subdivision scraping algorithm, defined below.
 
     A subclass of the Scraper class that contains functionality for scraping all
-    of the places in a given area by scraping subdivisions of that area.
+    of the places in a given area by scraping subdivisions of that area. This
+    class alone does not have any functionality; it depends on self.scrape,
+    which is left undefined by default.
+
+    For actual scrapers, see the child classes PlacesTextScraper,
+    PlacesNearbyScraper, and PlacesRadarScraper.
 
     Attributes:
         scrape = Undefined by default. scrape is a function to be defined by
-            classes that inherit from SubdivisionScraper, which takes the
+            classes that inherit from SubdivisionScraper, which must take the
             following arguments, in order:
                 latitude: The center latitude of the scrape area.
                 longitude: The center longitude of the scrape area.
@@ -413,23 +419,14 @@ class SubdivisionScraper(Scraper):
                     keyword in the case of PlacesTextScraper.
                 subdivision_id_string: A string detailing the ancestry of the
                     current scrape area in the subdivision tree.
-        max_results = A digit that describes the maximum number of results that
-            the main scraping function can return, as defined by the Google Maps
-            API documentation.
+            scrape must return an array containing all of the results found in
+            that scrape area.
+        max_results = Undefined by default. A digit that describes the maximum
+            number of results that the main scraping function can return, as
+            defined by the Google Maps API documentation.
         gsm: a staticmaps.Constructor object used for generating Google Static
             Maps API links.
     """
-
-    def __init__(self, output_directory_name):
-        """ Initializes SubdivisionScraper class
-
-        Args:
-            output_directory_name: A directory which is a subdivision of
-                OUTPUT_DIRECTORY_ROOT where scraped data and logs will be
-                stored.
-        """
-
-        Scraper.__init__(self, output_directory_name)
 
     def scrape_subdivisions(self, min_latitude, max_latitude, min_longitude,
                             max_longitude, grid_width, query,
@@ -467,7 +464,7 @@ class SubdivisionScraper(Scraper):
                 that by 2 to get the radius.
             We get the average longitude and latitude to get the center.
 
-        The scraper function is called on each cell and each cell is further
+        The scrape function is called on each cell and each cell is further
         subdivided into another square grid of congruent cells if the maximum
         number of results, as defined in the initialization, is returned. To do
         this, the function recurses with the cell's region becoming the new
@@ -649,111 +646,25 @@ class SubdivisionScraper(Scraper):
                 else:
                     print("Branch terminated\n")
 
-class PlacesTextScraper(SubdivisionScraper):
+class PlacesNearbyScraper(SubdivisionScraper):
+    """ A subclass of SubdivisionScraper specifically for scraping places_nearby
+
+    A subclass that defines self.scrape as a function that fetches results from
+    googlemaps.Client.places_nearby.
+
+    Attributes:
+        See SubdivisionScraper
+    """
+
     def __init__(self, output_directory_name):
-        Scraper.__init__(self, output_directory_name)
-
-        self.max_results = 200
-
-        print("Configured scraper to scrape places_radar using text search; max "
-              + "results = %d" % (
-            self.max_results
-        ))
-
-    def scrape(self, latitude, longitude, radius_meters, query,
-               subdivision_id_string):
-        """ Get points of interest from the Google Maps API using the radar
-
-        Attempt to download all places in the given scrape area using the
-        places_radar function of the Google Maps API library. A maximum of
-        MAX_RETRIES attempts are made before the function gives up and logs the
-        branch termination to termination_log.csv.
+        """ Initializes PlacesNearbyScraper class
 
         Args:
-            See the "scrape" attribute above.
-
-        Returns:
-            An array containing places returned by the Google Maps API function.
-
-            A blank array is returned if MAX_RETRIES attempts were made.
+            output_directory_name: A directory which is a subdivision of
+                OUTPUT_DIRECTORY_ROOT where scraped data and logs will be
+                stored.
         """
 
-        results = []
-
-        self.rate_limit() ######################################################
-
-        for attempt in range(MAX_RETRIES):
-            try:
-                # Do an initial, exploratory radar search
-                intermediate_results = gmaps.places_radar(
-                    location = {
-                        "lat": latitude,
-                        "lng": longitude
-                    },
-                    radius = radius_meters,
-                    keyword = query
-                )["results"]
-                time.sleep(REQUEST_DELAY)
-
-                # Get the details of each radar search result
-                current_place = 1
-                for place in intermediate_results:
-                    for place_attempt in range(MAX_RETRIES):
-
-                        self.rate_limit() ######################################
-
-                        try:
-                            place_id = place["place_id"]
-                            print("Fetching details for place %d of %d (%s)" % (
-                                current_place, len(intermediate_results),
-                                place_id
-                            ))
-                            results.append(gmaps.place(place_id))
-                            current_place += 1
-                            time.sleep(REQUEST_DELAY)
-                            break
-                        except Exception as err:
-                            print("Error getting details: %s" % err)
-                            self.log("error_log.csv", err)
-
-                            time.sleep(REQUEST_DELAY)
-                            pass
-
-                    if (place_attempt == MAX_RETRIES - 1):
-                        print("Max retries exceeded; skipping this place_id.")
-                        self.log(
-                            "termination_log.csv",
-                            ("Maximum number of retries for a place exceeded. "
-                             + "place_id: %s. " % place_id)
-                        )
-
-                break
-            except Exception as err:
-                print("Error: %s" % err)
-                self.log("error_log.csv", err)
-
-                time.sleep(REQUEST_DELAY)
-                pass
-            print("Retrying (attempt #%d)" % (attempt + 1))
-
-        if (attempt == MAX_RETRIES - 1):
-            print("Max retries exceeded; skipping this subdivision.")
-            self.log(
-                "termination_log.csv",
-                ("Maximum number of retries exceeded. Subdivision ID: %s. "
-                 + "Place type: %s. Coordinates: (%f, %f). Radius: %f" % (
-                    subdivision_id_string,
-                    query,
-                    latitude,
-                    longitude,
-                    radius_meters
-                ))
-            )
-
-        return results
-
-class PlacesNearbyScraper(SubdivisionScraper):
-    def __init__(self, output_directory_name):
         Scraper.__init__(self, output_directory_name)
 
         self.max_results = 200
@@ -774,8 +685,10 @@ class PlacesNearbyScraper(SubdivisionScraper):
         Because of how the API functions, scrape recurses if a next_page_token
         is returned in the results array.
 
+        See the documentation of the "scrape" attribute in SubdivisionScraper
+        for the main args.
+
         Args:
-            See the "scrape" attribute above.
             page: An integer describing the number of pages traversed as of the
                 current recursion.
             retries: An integer describing the number of attempts made as of the
@@ -862,9 +775,25 @@ class PlacesNearbyScraper(SubdivisionScraper):
 
         return combined_results
 
-
 class PlacesRadarScraper(SubdivisionScraper):
+    """ A subclass of SubdivisionScraper specifically for scraping places_radar
+
+    A subclass that defines self.scrape as a function that fetches results from
+    googlemaps.Client.places_radar.
+
+    Attributes:
+        See SubdivisionScraper
+    """
+
     def __init__(self, output_directory_name):
+        """ Initializes PlacesRadarScraper class
+
+        Args:
+            output_directory_name: A directory which is a subdivision of
+                OUTPUT_DIRECTORY_ROOT where scraped data and logs will be
+                stored.
+        """
+
         Scraper.__init__(self, output_directory_name)
 
         self.max_results = 60
@@ -882,8 +811,9 @@ class PlacesRadarScraper(SubdivisionScraper):
         MAX_RETRIES attempts are made before the function gives up and logs the
         branch termination to termination_log.csv.
 
-        Args:
-            See the "scrape" attribute above.
+
+        See the documentation of the "scrape" attribute in SubdivisionScraper
+        for the main args.
 
         Returns:
             An array containing places returned by the Google Maps API function.
@@ -931,6 +861,126 @@ class PlacesRadarScraper(SubdivisionScraper):
 
         return results
 
+class PlacesTextScraper(SubdivisionScraper):
+    """ A subclass of SubdivisionScraper specifically for scraping keyword
+    searches
+
+    A subclass that defines self.scrape as a function that fetches results from
+    googlemaps.Client.places_radar, performing searches for a specific keyword.
+
+    Attributes:
+        See SubdivisionScraper
+    """
+
+    def __init__(self, output_directory_name):
+        """ Initializes PlacesTextScraper class
+
+        Args:
+            output_directory_name: A directory which is a subdivision of
+                OUTPUT_DIRECTORY_ROOT where scraped data and logs will be
+                stored.
+        """
+
+        Scraper.__init__(self, output_directory_name)
+
+        self.max_results = 200
+
+        print("Configured scraper to scrape places_radar using text search; max "
+              + "results = %d" % (
+            self.max_results
+        ))
+
+    def scrape(self, latitude, longitude, radius_meters, query,
+               subdivision_id_string):
+        """ Get points of interest from the Google Maps API using the radar
+
+        Attempt to download all places in the given scrape area using the
+        places_radar function of the Google Maps API library. A maximum of
+        MAX_RETRIES attempts are made before the function gives up and logs the
+        branch termination to termination_log.csv.
+
+        Args:
+            See the "scrape" attribute above.
+
+        Returns:
+            An array containing places returned by the Google Maps API function.
+
+            A blank array is returned if MAX_RETRIES attempts were made.
+        """
+
+        results = []
+
+        self.rate_limit() ######################################################
+
+        for attempt in range(MAX_RETRIES):
+            try:
+                # Do an initial, exploratory radar search
+                intermediate_results = gmaps.places_radar(
+                    location = {
+                        "lat": latitude,
+                        "lng": longitude
+                    },
+                    radius = radius_meters,
+                    keyword = query
+                )["results"]
+                time.sleep(REQUEST_DELAY)
+
+                # Get the details of each radar search result
+                current_place = 1
+                for place in intermediate_results:
+                    for place_attempt in range(MAX_RETRIES):
+
+                        self.rate_limit() ######################################
+
+                        try:
+                            place_id = place["place_id"]
+                            print("Fetching details for place %d of %d (%s)" % (
+                                current_place, len(intermediate_results),
+                                place_id
+                            ))
+                            results.append(gmaps.place(place_id)["result"])
+                            current_place += 1
+                            time.sleep(REQUEST_DELAY)
+                            break
+                        except Exception as err:
+                            print("Error getting details: %s" % err)
+                            self.log("error_log.csv", err)
+
+                            time.sleep(REQUEST_DELAY)
+                            pass
+
+                    if (place_attempt == MAX_RETRIES - 1):
+                        print("Max retries exceeded; skipping this place_id.")
+                        self.log(
+                            "termination_log.csv",
+                            ("Maximum number of retries for a place exceeded. "
+                             + "place_id: %s. " % place_id)
+                        )
+
+                break
+            except Exception as err:
+                print("Error: %s" % err)
+                self.log("error_log.csv", err)
+
+                time.sleep(REQUEST_DELAY)
+                pass
+            print("Retrying (attempt #%d)" % (attempt + 1))
+
+        if (attempt == MAX_RETRIES - 1):
+            print("Max retries exceeded; skipping this subdivision.")
+            self.log(
+                "termination_log.csv",
+                ("Maximum number of retries exceeded. Subdivision ID: %s. "
+                 + "Place type: %s. Coordinates: (%f, %f). Radius: %f" % (
+                    subdivision_id_string,
+                    query,
+                    latitude,
+                    longitude,
+                    radius_meters
+                ))
+            )
+
+        return results
 
 ## Program Initialization ######################################################
 
