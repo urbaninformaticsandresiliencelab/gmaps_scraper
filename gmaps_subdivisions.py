@@ -1041,9 +1041,17 @@ def scrape_subdivisions(options):
                   + "info.")
             sys.exit(1)
     else:
+        types_to_scrape = PLACE_TYPES
+
+        # Restrict the types to scrape if the user specifies
+        if (options.categories != "null"):
+            types_to_scrape = options.categories.split(",")
+            print("Restricting search to the following categories: %s"
+                  % ", ".join(types_to_scrape))
+
         # For each place_type, in a places_nearby or places_radar scrape, the
         # subdivision -> extraction process is used.
-        for place_type in PLACE_TYPES:
+        for place_type in types_to_scrape:
             new_scraper.scrape_subdivisions(city_extents["min_latitude"],
                                             city_extents["max_latitude"],
                                             city_extents["min_longitude"],
@@ -1152,6 +1160,11 @@ if (__name__ == "__main__"):
     parser.add_option("--keyword", dest = "keyword", metavar = "KEYWORD",
                       help = "For text_radar scrapers: perform a text search "
                              + "for KEYWORD",
+                      default = "null")
+    parser.add_option("--categories", dest = "categories",
+                      metavar = "CATEGORIES",
+                      help = "A list of types to restrict the places_nearby or "
+                             + "places_radar search to, separated by commas",
                       default = "null")
     parser.add_option("--outdir", dest = "outdir", metavar = "OUTDIR",
                       help = "(Optional) Write all results to subdirectories "
