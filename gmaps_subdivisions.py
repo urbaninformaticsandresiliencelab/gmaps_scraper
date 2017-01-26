@@ -597,9 +597,9 @@ class SubdivisionScraper(Scraper):
                               + "minimum")
                         self.log(
                             "termination_log.csv",
-                            ("Radius fell below minimum value. Subdivision ID: "
-                             + "%s. Place type: %s. Coordinates: (%f, %f). "
-                             + "Radius: %f" % (
+                            (("Radius fell below minimum value. Subdivision "
+                              + "ID: %s. Place type: %s. Coordinates: "
+                              + "(%f, %f) Radius: %f") % (
                                 subdivision_id_string,
                                 query,
                                 subdivision_center_latitude,
@@ -637,12 +637,12 @@ class SubdivisionScraper(Scraper):
                 if (make_subdivisions):
                     print
                     self.scrape_subdivisions(subdivision_min_latitude,
-                                              subdivision_max_latitude,
-                                              subdivision_min_longitude,
-                                              subdivision_max_longitude,
-                                              3, query,
-                                              subdivision_id_string,
-                                              target_subdivision_id)
+                                             subdivision_max_latitude,
+                                             subdivision_min_longitude,
+                                             subdivision_max_longitude,
+                                             3, query,
+                                             subdivision_id_string,
+                                             target_subdivision_id)
                 else:
                     print("Branch terminated\n")
 
@@ -667,7 +667,7 @@ class PlacesNearbyScraper(SubdivisionScraper):
 
         Scraper.__init__(self, output_directory_name)
 
-        self.max_results = 200
+        self.max_results = 60
 
         print("Configured scraper to scrape places_nearby; max results = %d" % (
             self.max_results
@@ -761,8 +761,8 @@ class PlacesNearbyScraper(SubdivisionScraper):
                 print("Max retries exceeded; skipping this subdivision.")
                 self.log(
                     "termination_log.csv",
-                    ("Maximum number of retries exceeded. Subdivision ID: %s. "
-                     + "Place type: %s. Coordinates: (%f, %f). Radius: %f" % (
+                    (("Maximum number of retries exceeded. Subdivision ID: %s. "
+                      + "Place type: %s. Coordinates: (%f, %f). Radius: %f") % (
                         subdivision_id_string,
                         query,
                         latitude,
@@ -796,7 +796,7 @@ class PlacesRadarScraper(SubdivisionScraper):
 
         Scraper.__init__(self, output_directory_name)
 
-        self.max_results = 60
+        self.max_results = 200
 
         print("Configured scraper to scrape places_radar; max results = %d" % (
             self.max_results
@@ -849,8 +849,8 @@ class PlacesRadarScraper(SubdivisionScraper):
             print("Max retries exceeded; skipping this subdivision.")
             self.log(
                 "termination_log.csv",
-                ("Maximum number of retries exceeded. Subdivision ID: %s. "
-                 + "Place type: %s. Coordinates: (%f, %f). Radius: %f" % (
+                (("Maximum number of retries exceeded. Subdivision ID: %s. "
+                  + "Place type: %s. Coordinates: (%f, %f). Radius: %f") % (
                     subdivision_id_string,
                     query,
                     latitude,
@@ -953,8 +953,8 @@ class PlacesTextScraper(SubdivisionScraper):
                         print("Max retries exceeded; skipping this place_id.")
                         self.log(
                             "termination_log.csv",
-                            ("Maximum number of retries for a place exceeded. "
-                             + "place_id: %s. " % place_id)
+                            (("Maximum number of retries for a place exceeded. "
+                              + "place_id: %s. ") % place_id)
                         )
 
                 break
@@ -970,8 +970,8 @@ class PlacesTextScraper(SubdivisionScraper):
             print("Max retries exceeded; skipping this subdivision.")
             self.log(
                 "termination_log.csv",
-                ("Maximum number of retries exceeded. Subdivision ID: %s. "
-                 + "Place type: %s. Coordinates: (%f, %f). Radius: %f" % (
+                (("Maximum number of retries exceeded. Subdivision ID: %s. "
+                  + "Place type: %s. Coordinates: (%f, %f). Radius: %f") % (
                     subdivision_id_string,
                     query,
                     latitude,
