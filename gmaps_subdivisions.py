@@ -1120,10 +1120,18 @@ def scrape_errors(options):
                         "errors"
                     )).replace(" ", "_")
                     scraper_type = "_".join(options.rescrape.split("_")[-2:])
-                    new_scraper = PlacesNearbyScraper(
-                        scraper_output_directory_name,
-                        scraper_type
-                    )
+                    if (scraper_type == "places_nearby"):
+                        new_scraper = PlacesNearbyScraper(
+                            scraper_output_directory_name
+                        )
+                    elif (scraper_type == "places_radar"):
+                        new_scraper = PlacesRadarScraper(
+                            scraper_output_directory_name
+                        )
+                    else:
+                        print("Error: could not re-scrape scrape_type %s "
+                              % scraper_type)
+                        return
 
                     for termination in terminations:
                         print("Scraping place_type %s of subdivision %s" % (
