@@ -1120,8 +1120,10 @@ def scrape_errors(options):
                         "errors"
                     )).replace(" ", "_")
                     scraper_type = "_".join(options.rescrape.split("_")[-2:])
-                    new_scraper = PlaceScraper(scraper_output_directory_name,
-                                               scraper_type)
+                    new_scraper = PlacesNearbyScraper(
+                        scraper_output_directory_name,
+                        scraper_type
+                    )
 
                     for termination in terminations:
                         print("Scraping place_type %s of subdivision %s" % (
