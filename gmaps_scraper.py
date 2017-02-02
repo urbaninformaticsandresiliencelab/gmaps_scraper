@@ -8,6 +8,7 @@ import glob
 import json
 import os
 import time
+import subprocess
 import sys
 
 import parse_tiger
@@ -341,14 +342,24 @@ class DetailScraper(Scraper):
         counter = 1
 
         if (type(target) is str):
+            # File
             if (os.path.isfile(target)) and (target[-5:] == ".json"):
+                ''' Old method of parsing the file used too much memory
                 file_object = open(target)
                 for datum in json.load(file_object):
                     place_ids.append(datum["place_id"])
                 file_object.close()
+                '''
+                place_ids = subprocess.check_output(
+                    ["grep", "-Po", "(?<=\"place_id\":).*?(?=\",)", target]
+                ).replace(" ", "").replace("\"", "").rstrip("\n").split("\n")
                 print("Added %d place_ids from %s" % (len(place_ids), target))
+
+            # Single place_id
             else:
                 place_ids.append(target)
+
+        # Array of place_ids
         elif (type(target) is list) or (type(target) is tuple):
             if (type(target[0]) is str):
                 place_ids += target
