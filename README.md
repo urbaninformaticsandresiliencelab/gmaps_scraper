@@ -51,7 +51,7 @@ script.
 
 gmaps\_subdivisions.py
 ----------------------
-*gmaps_subdivisions.py* scrapes places from Google Maps by subdividing a chosen
+*gmaps_scraper.py* scrapes places from Google Maps by subdividing a chosen
 area into smaller areas and making a requests for places in that area, making
 further subdivisions if the maximum number of requests, as defined by the
 [Google Places API Web Service documentation](https://developers.google.com/places/web-service/search).
@@ -106,7 +106,7 @@ exhibit strange behaviour:
     To re-scrape a subdivision, all arguments except subdivision_parent_id
     must be supplied.
 
-*gmaps_subdivisions.py* provides the following classes:
+*gmaps_scraper.py* provides the following classes:
 
 * Scraper: A class for building generic Google Maps API scrapers
     * DetailScraper: A child class of Scraper built for scraping place details
@@ -200,10 +200,10 @@ It will then process this data, placing the organized data in a directory named
 *tiger-2016/*. At this point, *tiger-2016-src/* can be removed if you wish.
 
 The next step is to create a *credentials.py* if you do not already have one. To
-create a new one, run *gmaps_subdivisions.py* once; it should create a template
+create a new one, run *gmaps_scraper.py* once; it should create a template
 for you:
 
-    ./gmaps_subdivisions.py
+    ./gmaps_scraper.py
 
 Enter the appropriate keys and save the file.
 
@@ -214,15 +214,15 @@ scripts.
 
 Scraping
 --------
-To scrape a city, supply the necessary arguments to *gmaps_subdivisions.py*.
+To scrape a city, supply the necessary arguments to *gmaps_scraper.py*.
 More information on what arguments to supply can be viewed by passing the
 *--help* argument:
 
-    ./gmaps_subdivisions.py --help
+    ./gmaps_scraper.py --help
 
 For example, to scrape Boston, Massachusetts using the places\_nearby scraper:
 
-    ./gmaps_subdivisions.py --type places_nearby --city Boston --state Massachusetts
+    ./gmaps_scraper.py --type places_nearby --city Boston --state Massachusetts
 
 Processing
 ----------
