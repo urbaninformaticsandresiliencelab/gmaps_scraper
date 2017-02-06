@@ -328,7 +328,7 @@ class DetailScraper(Scraper):
         Scraper.__init__(self, output_directory_name)
         self.dump_interval = dump_interval
         self.request_delay = request_delay
-        self.start_at = 0
+        self.start_at = start_at
 
     def scrape(self, target):
         """ The main function of DetailScraper
@@ -375,6 +375,7 @@ class DetailScraper(Scraper):
             raise Exception("Invalid target supplied")
 
         if (self.start_at != 0):
+            print("Skipping first %d place_ids" % self.start_at)
             place_ids = place_ids[self.start_at:]
 
         num_place_ids = len(place_ids)
