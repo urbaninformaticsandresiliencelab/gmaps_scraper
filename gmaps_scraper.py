@@ -311,7 +311,8 @@ class DetailScraper(Scraper):
         dump_interval
     """
 
-    def __init__(self, output_directory_name, dump_interval = 50, request_delay = 0.5):
+    def __init__(self, output_directory_name, dump_interval = 50,
+                 request_delay = 0.5, start_at = 0):
         """ Initializes DetailScraper class
 
         Args:
@@ -320,11 +321,14 @@ class DetailScraper(Scraper):
                 stored.
             dump_interval: An integer representing the number of place_ids
                 traversed between each dump
+            request_delay: An integer that overrides REQUEST_DELAY.
+            start_at: The index of the place_ids array to start scraping at.
         """
 
         Scraper.__init__(self, output_directory_name)
         self.dump_interval = dump_interval
         self.request_delay = request_delay
+        self.start_at = 0
 
     def scrape(self, target):
         """ The main function of DetailScraper
@@ -369,6 +373,9 @@ class DetailScraper(Scraper):
 
         if (len(place_ids) == 0):
             raise Exception("Invalid target supplied")
+
+        if (self.start_at != 0):
+            place_ids = place_ids[self.start_at:]
 
         num_place_ids = len(place_ids)
         for place_id in place_ids:
