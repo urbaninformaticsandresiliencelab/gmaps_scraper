@@ -101,7 +101,7 @@ def create_json(scrape_path):
     """
 
     scrape_path_basename = scrape_path.split("/")[-1]
-    seen_place_ids = []
+    seen_place_ids = {}
     data = []
 
     output_file = "%s/%s.json" % (JSON_DIRECTORY, scrape_path_basename)
@@ -134,7 +134,7 @@ def create_json(scrape_path):
                 for obj in pickle.load(data_pickle_object):
                     # Ignore duplicate places
                     if (not obj["place_id"] in seen_place_ids):
-                        seen_place_ids.append(obj["place_id"])
+                        seen_place_ids["place_id"] = 0
                         data.append(obj)
 
                     # Logging
