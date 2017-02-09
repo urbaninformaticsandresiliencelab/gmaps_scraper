@@ -134,7 +134,7 @@ def create_json(scrape_path):
                 for obj in pickle.load(data_pickle_object):
                     # Ignore duplicate places
                     if (not obj["place_id"] in seen_place_ids):
-                        seen_place_ids["place_id"] = 0
+                        seen_place_ids[obj["place_id"]] = 0
                         data.append(obj)
 
                     # Logging
