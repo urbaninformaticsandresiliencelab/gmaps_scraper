@@ -259,7 +259,7 @@ class Scraper(object):
         while ((current_period_length < PERIOD_LENGTH)
                and (self.traversed_this_period >= MAX_REQUESTS_PER_PERIOD)):
             print("Max requests per period reached (%d). %f Seconds until next "
-                   + "period." % (
+                   "period." % (
                 MAX_REQUESTS_PER_PERIOD, PERIOD_LENGTH - current_period_length))
             time.sleep(10)
 
@@ -602,17 +602,17 @@ class SubdivisionScraper(Scraper):
                     # result collection and recurse
                     if (subdivision_radius_meters > MAX_RADIUS_METERS):
                         print("Making subdivisions because radius exceeded "
-                              + "maximum")
+                              "maximum")
                         make_subdivisions = True
 
                     elif (subdivision_radius_meters < MIN_RADIUS_METERS):
                         print("Terminating branch because radius is below the "
-                              + "minimum")
+                              "minimum")
                         self.log(
                             "termination_log.csv",
                             (("Radius fell below minimum value. Subdivision "
-                              + "ID: %s. Place type: %s. Coordinates: "
-                              + "(%f, %f) Radius: %f") % (
+                              "ID: %s. Place type: %s. Coordinates: "
+                              "(%f, %f) Radius: %f") % (
                                 subdivision_id_string,
                                 query,
                                 subdivision_center_latitude,
@@ -640,7 +640,7 @@ class SubdivisionScraper(Scraper):
                         # If 60 results were returned, recurse
                         if (len(results) == self.max_results):
                             print("Making subdivisions because max results "
-                                  + "were returned")
+                                  "were returned")
                             make_subdivisions = True
 
                 else:
@@ -777,7 +777,7 @@ class PlacesNearbyScraper(SubdivisionScraper):
                 self.log(
                     "termination_log.csv",
                     (("Maximum number of retries exceeded. Subdivision ID: %s. "
-                      + "Place type: %s. Coordinates: (%f, %f). Radius: %f") % (
+                      "Place type: %s. Coordinates: (%f, %f). Radius: %f") % (
                         subdivision_id_string,
                         query,
                         latitude,
@@ -867,7 +867,7 @@ class PlacesRadarScraper(SubdivisionScraper):
             self.log(
                 "termination_log.csv",
                 (("Maximum number of retries exceeded. Subdivision ID: %s. "
-                  + "Place type: %s. Coordinates: (%f, %f). Radius: %f") % (
+                  "Place type: %s. Coordinates: (%f, %f). Radius: %f") % (
                     subdivision_id_string,
                     query,
                     latitude,
@@ -904,8 +904,8 @@ class PlacesTextScraper(SubdivisionScraper):
 
         self.max_results = 200
 
-        print("Configured scraper to scrape places_radar using text search; max "
-              + "results = %d" % (
+        print("Configured scraper to scrape places_radar using text search; "
+              "max results = %d" % (
             self.max_results
         ))
 
@@ -973,7 +973,7 @@ class PlacesTextScraper(SubdivisionScraper):
                         self.log(
                             "termination_log.csv",
                             (("Maximum number of retries for a place exceeded. "
-                              + "place_id: %s. ") % place_id)
+                              "place_id: %s. ") % place_id)
                         )
 
                 break
@@ -990,7 +990,7 @@ class PlacesTextScraper(SubdivisionScraper):
             self.log(
                 "termination_log.csv",
                 (("Maximum number of retries exceeded. Subdivision ID: %s. "
-                  + "Place type: %s. Coordinates: (%f, %f). Radius: %f") % (
+                  "Place type: %s. Coordinates: (%f, %f). Radius: %f") % (
                     subdivision_id_string,
                     query,
                     latitude,
@@ -1059,7 +1059,7 @@ def scrape_subdivisions(options):
                 3, options.keyword)
         else:
             print("Please specify a keyword with --keyword. See --help for "
-                  + "info.")
+                  "info.")
             sys.exit(1)
     else:
         types_to_scrape = PLACE_TYPES
@@ -1209,12 +1209,12 @@ if (__name__ == "__main__"):
     parser.add_option("--scrape-errors", dest = "rescrape",
                       metavar = "SCRAPE_NAME",
                       help = "Re-scrape terminated branches from the given "
-                             + "scrape. Overrides all other options.")
+                             "scrape. Overrides all other options.")
     parser.add_option("--scrape-details", dest = "details",
                       metavar = "JSON_NAME",
                       help = "Scrape details from the given formatted JSON. "
-                             + "Overrides all other options except "
-                             + "--scrape-errors.")
+                             "Overrides all other options except "
+                             "--scrape-errors.")
     parser.add_option("--state", dest = "state", metavar = "STATE",
                       help = "Use the shapefile located in tiger-2016/STATE",
                       default = "null")
@@ -1225,21 +1225,23 @@ if (__name__ == "__main__"):
                               % ", ".join(valid_scrape_types))
     parser.add_option("--keyword", dest = "keyword", metavar = "KEYWORD",
                       help = "For text_radar scrapers: perform a text search "
-                             + "for KEYWORD")
+                             "for KEYWORD")
     parser.add_option("--categories", dest = "categories",
                       metavar = "CATEGORIES",
                       help = "A list of types to restrict the places_nearby or "
-                             + "places_radar search to, separated by commas")
+                             "places_radar search to, separated by commas")
     parser.add_option("--outdir", dest = "outdir", metavar = "OUTDIR",
                       help = "(Optional) Write all results to subdirectories "
-                             + "of OUTDIR")
+                             "of OUTDIR")
     (options, args) = parser.parse_args()
 
     if (options.api_key is None):
         if (not os.path.isfile("credentials.py")):
-            print("Could not find credentials.py. One has been created for you.")
+            print("Could not find credentials.py. One has been created for "
+                  "you.")
         credentials_file = open("credentials.py", "w")
-        credentials_file.write("# Google maps API key to be used by the scraper\n"
+        credentials_file.write("# Google maps API key to be used by the "
+                               "scraper\n"
                                "api_key = \"Enter key here\"\n")
         credentials_file.close()
         print("Please provide an API key by adding it to credentials.py or "
