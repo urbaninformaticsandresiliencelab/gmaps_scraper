@@ -2,6 +2,8 @@
 # Merge and deduplicate data, writing the result as a JSON, using Redis as the
 # shared memory store.
 
+# WARNING: Do not use if JSON strings are expected to be larger than 512MB
+
 import glob
 import json
 import multiprocessing
