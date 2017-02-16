@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # Library providing data dumping classes in a modular way for gmaps_scraper
 
+# TODO: update documentation
+
 import cPickle
 
 try:
@@ -13,7 +15,8 @@ try:
             collection: A pymongo.collection.Collection object to be written to.
         """
 
-        def __init__(self, db_name, collection_name, host = "localhost:27017"):
+        def __init__(self, collection_name, db_name = "places_db",
+                     host = "localhost:27017"):
             """ Initializes the MongoWriter class
 
             Args:
@@ -55,7 +58,8 @@ try:
                     that stores seen place_ids.
             """
 
-            def __init__(self, mongo_db_name, mongo_collection_name,
+            def __init__(self, mongo_collection_name,
+                         mongo_db_name = "places_db",
                          redis_set = "seen_places", redis_db = 0,
                          mongo_host = "localhost:27017",
                          redis_host = "localhost", redis_port = 6379):

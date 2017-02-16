@@ -223,7 +223,7 @@ class Scraper(object):
             print("Initialized new PickleWriter")
         elif (self.writer_type == "mongo"):
             # TODO: define db_name and collection_name for MongoWriter
-            self.writer = gms_io.MongoWriter()
+            self.writer = gms_io.MongoWriter(self.output_directory_name)
             print("Initialized new MongoWriter")
 
     def initialize_output_directory(self):
