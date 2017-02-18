@@ -11,43 +11,43 @@ API_KEYS = [
 THREADS = 9
 
 def start(args):
-	name = "%s_%d" % (args["row"][5].replace("\"",""), args["num"])
-	min_lat = float(args["row"][2])
-	max_lat = float(args["row"][4])
-	min_lng = float(args["row"][1])
-	max_lng = float(args["row"][3])
-	scraper = gmaps_scraper.PlacesNearbyScraper(
-		args["api_key"],
-		name
-	)
-	scraper.scrape_subdivisions(
-		min_lat,
-		max_lat,
-		min_lng,
-		max_lng,
-		3,
-		"",
-		target_subdivision_id = "root -> %d" % args["num"]
-	)
+    name = "%s_%d" % (args["row"][5].replace("\"",""), args["num"])
+    min_lat = float(args["row"][2])
+    max_lat = float(args["row"][4])
+    min_lng = float(args["row"][1])
+    max_lng = float(args["row"][3])
+    scraper = gmaps_scraper.PlacesNearbyScraper(
+        args["api_key"],
+        name
+    )
+    scraper.scrape_subdivisions(
+        min_lat,
+        max_lat,
+        min_lng,
+        max_lng,
+        3,
+        "",
+        target_subdivision_id = "root -> %d" % args["num"]
+    )
 
 if (__name__ == "__main__"):
-	rows = []
-	with open("bbox_fua_sub.csv", "r") as f:
-		for row in f.readlines()[1:]:
-			rows.append(row.strip().split(";"))
+    rows = []
+    with open("bbox_fua_sub.csv", "r") as f:
+        for row in f.readlines()[1:]:
+            rows.append(row.strip().split(";"))
 
-	row = rows[355]
+    row = rows[355]
 
-	tasks = []
-	for num in range(1, THREADS + 1):
-		tasks.append({
-			"row": row,
-			"num": num,
-			"api_key": random.choice(API_KEYS)
-		})
-	print(tasks)
+    tasks = []
+    for num in range(1, THREADS + 1):
+        tasks.append({
+            "row": row,
+            "num": num,
+            "api_key": random.choice(API_KEYS)
+        })
+    print(tasks)
 
-	pool = multiprocessing.Pool(THREADS)
-	pool.map(start, tasks)
-	pool.close()
-	pool.join()
+    pool = multiprocessing.Pool(THREADS)
+    pool.map(start, tasks)
+    pool.close()
+    pool.join()
