@@ -4,122 +4,124 @@
 # TODO: update documentation
 
 import cPickle
+import json
+import os
+
+class DummyDuplicateChecker(object):
+    """ A dummy class to be used when RedisDuplicateChecker is not available
+
+    This class provides dummy functions to mimic RedisDuplicateChecker's
+    functionality, but does not actually check for duplicates or perform any
+    other functions.
+    """
+
+    def check(self, *args):
+        return True
+    def flush(self):
+        pass
+
+try:
+    import redis
+    class RedisDuplicateChecker(object):
+        def __init__(self, set_name = "seen_places", redis_db = 0,
+                     redis_host = "localhost", redis_port = 6379):
+            # Test to make sure Redis is running
+            r = redis.StrictRedis()
+            self.redis = redis.StrictRedis(host = redis_host,
+                                           port = redis_port, db = redis_db)
+            self.redis.set("RedisDuplicateCheckerTest", 1)
+            self.redis.delete("RedisDuplicateCheckerTest")
+            self.set_name = set_name
+
+        def check(self, place_id):
+            """ Checks to see if place_id has already been dumped
+
+            Args:
+                place_id: A string containing the place_id to be checked.
+
+            Returns:
+                True if the place_id does not exist yet; False if it does.
+            """
+            return self.redis.sadd(self.set_name, place_id) == 1
+
+        def flush(self):
+            """ Empties the working set """
+            self.redis.delete(self.set_name)
+except:
+    print("RedisDuplicateChecker class unavailable; could not import "
+                  " redis.")
+
+class Writer(object):
+    """ Base Writer class
+
+    Attributes:
+        duplicate_checker: Either a RedisDuplicateChecker or
+            DummyDuplicateChecker object, depending on the availability of
+            Redis.
+    """
+
+    def __init__(self, *redis_args):
+        """ Initializes self.duplicate_checker and defines self.flush
+
+        Args:
+            redis_args: A dictionary of keyword arguments. See
+                RedisDuplicateChecker.__init__ for more information.
+        """
+
+        self.duplicate_checker = DummyDuplicateChecker()
+        try:
+            self.duplicate_checker = RedisDuplicateChecker(*redis_args)
+        except Exception as err:
+            print("Could not initialize RedisDuplicateChecker: %s" % err)
+            print("Using DummyDuplicateChecker instead")
 
 try:
     import pymongo
-
-    class MongoWriter(object):
+    class MongoWriter(Writer):
         """ Handles writing to a MongoDB collection
 
         Attributes:
-            collection: A pymongo.collection.Collection object to be written to.
+            collection: A pymongo.collection.Collection object to be written
+                to.
+            duplicate_checker: Either a RedisDuplicateChecker or
+                DummyDuplicateChecker object, depending on the availability of
+                Redis.
         """
 
         def __init__(self, collection_name, db_name = "places_db",
-                     host = "localhost:27017"):
+                     host = "localhost:27017", *redis_args):
             """ Initializes the MongoWriter class
 
             Args:
-                db_name: A string containing the name of the database.
-                collection_name: A string containing the name of the collection.
-                host: A string containing the name of the host and its port.
+                db_name: A string containing the name of the MongoDB
+                    database.
+                collection_name: A string containing the name of the
+                    MongoDB collection.
+                    that stores seen place_ids.
+                host: A string containing the name of the MongoDB host
+                    and its port.
+                redis_args: A dictionary of keyword arguments. See
+                    RedisDuplicateChecker.__init__ for more information.
             """
 
+            Writer.__init__(self, *redis_args)
             self.collection = pymongo.MongoClient(host)[db_name][collection_name]
 
-        def dump(self, data, dump_many = True):
-            """ Write data to the previously defined collection
+        def dump(self, data):
+            """ Write data to the previously defined collection, checking for
+            duplicates first
 
             Args:
-                data: A dictionary object or iterable to be written to the
+                data: An iterable containing dictionaries to be written to the
                     collection.
-                dump_many: A boolean indicating whether or not data consists of
-                    one dictionary or many dictionaries.
             """
-
-            if (dump_many):
-                self.collection.insert_many(data)
-            else:
-                self.collection.insert_one(data)
-
-    try:
-        import redis
-
-        class MongoRedisWriter(MongoWriter):
-            """ Child class of MongoWriter that handles writing to a MongoDB
-            collection, checking against Redis for duplicates first
-
-            Attributes:
-                collection: A pymongo.collection.Collection object to be written
-                    to.
-                self.redis: A redis.StrictRedis instance that manages a
-                    connection to the Redis server.
-                self.redis_set: A string containing the name of the Redis set
-                    that stores seen place_ids.
-            """
-
-            def __init__(self, mongo_collection_name,
-                         mongo_db_name = "places_db",
-                         redis_set = "seen_places", redis_db = 0,
-                         mongo_host = "localhost:27017",
-                         redis_host = "localhost", redis_port = 6379):
-                """ Initializes the MongoWriter class
-
-                Args:
-                    mongo_db_name: A string containing the name of the MongoDB
-                        database.
-                    mongo_collection_name: A string containing the name of the
-                        MongoDB collection.
-                    redis_set: A string containing the name of the Redis set
-                        that stores seen place_ids.
-                    redis_db: An integer describing which Redis database to use.
-                    mongo_host: A string containing the name of the MongoDB host
-                        and its port.
-                    redis_host: A string containing the name of the Redis host.
-                    redis_port: An integer describing the port to use on the
-                        Redis host.
-                """
-
-                MongoWriter.__init__(mongo_db_name, mongo_collection_name,
-                                     mongo_host)
-                self.redis = redis.StrictRedis(host = redis_host,
-                                               port = redis_port, db = redis_db)
-                self.redis_set = redis_set
-
-            def add_dict(self, _dict):
-                """ Add a dictionary to the MongoDB collection, checking for
-                duplicates first
-
-                Args:
-                    _dict: A dictionary containing a Google Places API JSON.
-                """
-                place_id = _dict["place_id"]
-                if (not self.redis.sismember(self.redis_set, place_id)):
-                    self.redis.sadd(self.redis_set, place_id)
+            for _dict in data:
+                if (self.duplicate_checker.check(_dict["place_id"])):
                     self.collection.insert_one(_dict)
-
-            def dump(self, data, dump_many = True):
-                """ Write data to the previously defined collection
-
-                Args:
-                    data: A dictionary object or iterable to be written to the
-                        collection.
-                    dump_many: A boolean indicating whether or not data consists
-                        of one dictionary or many dictionaries.
-                """
-                if (dump_many):
-                    for _dict in data:
-                        add_dict(_dict)
-                else:
-                    add_dict(data)
-    except:
-        print("MongoRedisWriter class unavailable; redis not found")
 except:
-    print("MongoWriter class unavailable; pymongo not found")
-    print("MongoRedisWriter class unavailable; parent class MongoWriter "
-          "unavailable")
+    print("MongoWriter class unavailable; could not import pymongo")
 
-class PickleWriter(object):
+class PickleWriter(Writer):
     """ Handles writing to a pickle file
 
     Attributes:
@@ -127,12 +129,7 @@ class PickleWriter(object):
     """
 
     def __init__(self, pickle_path):
-        """ Initializes PickleWriter class
-
-        Args:
-            pickle_path: A string containing a path to a pickle file.
-        """
-
+        """ Initializes PickleWriter class """
         self.pickle_path = pickle_path
 
     def dump(self, data):
@@ -144,3 +141,48 @@ class PickleWriter(object):
 
         with open(self.pickle_path, "a+b") as f:
             cPickle.dump(data, f)
+
+class JSONWriter(Writer):
+    """ Handles writing to a JSON
+
+    Attributes:
+        json_path: A string containing a path to a JSON file.
+        duplicate_checker: Either a RedisDuplicateChecker or
+            DummyDuplicateChecker object, depending on the availability of
+            Redis.
+    """
+
+    def __init__(self, json_path, *redis_args):
+        """ Initializes JSONWriter class and output file
+
+        Args:
+            json_path: A string containing a path to a JSON file.
+            redis_args: A dictionary of keyword arguments. See
+                RedisDuplicateChecker.__init__ for more information.
+        """
+
+        Writer.__init__(self, *redis_args)
+        self.json_path = json_path
+
+        if (not os.path.isfile(json_path)):
+            with open(json_path, "w") as f:
+                f.write("[\n\n]")
+
+    def dump(self, data):
+        """ Dump data to a JSON file, checking for duplicates first
+
+        Args:
+            data: An iterable containing dictionaries to be dumped.
+        """
+
+        with open(self.json_path, "r+") as f:
+            if (len(data) > 0):
+                f.seek(-2, os.SEEK_END)
+                for _dict in data:
+                    if (self.duplicate_checker.check(_dict["place_id"])):
+                        json.dump(_dict, f)
+                        f.write(",\n")
+                    else:
+                        print("Ignoring duplicate %s" % _dict["place_id"])
+                f.seek(-2, os.SEEK_END)
+                f.write("\n]")
