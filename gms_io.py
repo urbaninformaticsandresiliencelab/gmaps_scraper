@@ -198,6 +198,8 @@ class JSONWriter(Writer):
         with open(self.json_path, "r+") as f:
             if (len(data) > 0):
                 f.seek(-2, os.SEEK_END)
+                if (f.tell() != 2):
+                    f.write(",\n")
                 for _dict in data:
                     if (self.duplicate_checker.check(_dict["place_id"])):
                         json.dump(_dict, f)
