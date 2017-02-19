@@ -8,7 +8,7 @@ Table of Contents
 =================
 Code Overview
 -------------
-For craping:
+For scraping:
 
 * gmaps\_subdivisions.py - The main scraping script.
 
@@ -24,6 +24,8 @@ Additional libraries used by the scraper:
 
 * geo.py - A library providing various geometric functions such as the haversine
     formula, the law of cosines, and a function for point-in-polygon.
+* gms\_io.py - A library providing various classes that handle the writing of
+    scraped data to various formats.
 * parse\_tiger.py - A library providing wrapper functions for parsing the US
     Census TIGER data by using the shapefile library.
 * staticmaps.py - A library that generates valid Google Static Maps API URLs for
@@ -121,6 +123,10 @@ exhibit strange behaviour:
           scraping the places_radar API call, filtering results by using a
           given keyword.
 
+The writing of scraped data is handled by *gms_io.py*, which has the ability to
+deduplicate on the fly. More information can be found under the *gms_io.py*
+section.
+
 process\_pickles.py
 -------------------
 Due to the nature of the scraper, the output pickle files, which are appended to
@@ -161,9 +167,36 @@ used in *gmaps\_subdivisions.py*. Functions included:
 * haversine and law\_of\_cosines - Calculate the distance between two points on
     a sphere.
 
+gms\_io.py
+----------
+*gms_io.py* handles the saving of scraped data to various file formats or
+databases and provides two families of classes: duplicate checkers and writers.
+
+Duplicate checkers have two methods: *check*, which checks to see if a place has
+already been saved, and *flush*, which clears the list of seen places. These are
+used by writer classes, which have a single dump method that takes an array of
+dictionaries as input and saves the given dictionaries to an output destination.
+
+Duplicate checker classes provided:
+* DuplicateChecker: The base class to use when no other classes can be
+  instanced or duplicate checking is not desired. This mimics the behaviour
+    of other duplicate checkers but does not actually do any checking.
+    * SQLite3DuplicateChecker: A duplicate checker that checks against an SQLite
+      database.
+    * RedisDuplicateChecker: A duplicate checker that checks against a Redis
+      set.
+
+Writer classes provided:
+* Writer: Base writer class that provides no functionality other than the
+  initialization of a duplicate checker.
+    * MongoWriter: Handles writing to a MongoDB collection.
+    * PickleWriter: Handles writing to a pickle files, separated by period. This
+      was previously the default "writer" of *gmaps_scraper.py*.
+    * JSONWriter: Handles writing to a JSON file.
+
 parse\_tiger.py
 ---------------
-parse\_tiger.py provides simple wrapper operations tailored for processing US
+*parse_tiger.py* provides simple wrapper operations tailored for processing US
 Census TIGER shapefiles. Functions included:
 
 * dump\_names - Return an array of all places included in a shapefile.

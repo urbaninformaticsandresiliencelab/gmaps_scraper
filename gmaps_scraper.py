@@ -178,7 +178,7 @@ class Scraper(object):
     """
 
     def __init__(self, api_key, output_directory_name = "Untitled_Scrape",
-                 writer = DEFAULT_WRITER):
+                 writer = DEFAULT_WRITER, flush_writer = True):
         """ Initializes Scraper class
 
         Performs necessary initialization before the scraper starts running,
@@ -191,6 +191,9 @@ class Scraper(object):
             output_directory_name: A directory which is a subdivision of
                 OUTPUT_DIRECTORY_ROOT where scraped data and logs will be
                 stored.
+            writer: A string containing information about which writer to use.
+            flush_writer: A boolean describing whether or not the writer should
+                be flushed when initialized.
         """
 
         self.gmaps = googlemaps.Client(
@@ -200,6 +203,7 @@ class Scraper(object):
         self.gsm = staticmaps.Constructor()
 
         self.writer_type = writer
+        self.flush_writer = flush_writer
 
         self.output_directory_name = output_directory_name
         self.output_directory = ""
@@ -222,24 +226,34 @@ class Scraper(object):
         argument, which is the data to be dumped. Each class has different
         initialization arguments; see the comments in gms_io.py for more info.
         """
+
+        # Initialize writer
         if (self.writer_type == "pickle"):
             self.writer = gms_io.PickleWriter(("%s/data.p"
                                                % self.period_directory))
             print("Using gms_io.PickleWriter")
         elif (self.writer_type == "mongo"):
-            self.writer = gms_io.MongoWriter(
-                self.output_directory_name,
-                {"set_name":time.strftime("%Y-%m-%dT%H:%M:%S")}
-            )
-            self.writer.duplicate_checker.flush()
+            self.writer = gms_io.MongoWriter(self.output_directory_name)
             print("Using gms_io.MongoWriter")
-        elif (self.writer_type == "json"):
+        else:
             self.writer = gms_io.JSONWriter(
                 ("%s/data.json" % self.output_directory),
-                {"set_name":time.strftime("%Y-%m-%dT%H:%M:%S")}
             )
-            self.writer.duplicate_checker.flush()
             print("Using gms_io.JSONWriter")
+
+        # Initialize duplicate checker
+        try:
+            self.writer.duplicate_checker = gms_io.RedisDuplicateChecker(
+                set_name = time.strftime("%Y-%m-%dT%H:%M:%S")
+            )
+        except Exception as err:
+            print("Could not instance RedisDuplicateChecker object: %s" % err)
+            print("Using SQLite3DuplicateChecker instead")
+            self.writer.duplicate_checker = gms_io.SQLite3DuplicateChecker(
+                db_path = "%s/seen_places.db" % self.output_directory
+            )
+        if (self.flush_writer):
+            self.writer.duplicate_checker.flush()
 
     def initialize_output_directory(self):
         """ Initializes an output directory for the current period
@@ -697,14 +711,14 @@ class PlacesNearbyScraper(SubdivisionScraper):
         See SubdivisionScraper.
     """
 
-    def __init__(self, *args):
+    def __init__(self, *args, **kwargs):
         """ Initializes PlacesNearbyScraper class
 
         Args:
             See Scraper.__init__.
         """
 
-        Scraper.__init__(self, *args)
+        Scraper.__init__(self, *args, **kwargs)
 
         self.max_results = 60
 
@@ -824,14 +838,14 @@ class PlacesRadarScraper(SubdivisionScraper):
         See SubdivisionScraper.
     """
 
-    def __init__(self, *args):
+    def __init__(self, *args, **kwargs):
         """ Initializes PlacesRadarScraper class
 
         Args:
             See Scraper.__init__.
         """
 
-        Scraper.__init__(self, *args)
+        Scraper.__init__(self, *args, **kwargs)
 
         self.max_results = 200
 
@@ -909,14 +923,14 @@ class PlacesTextScraper(SubdivisionScraper):
         See SubdivisionScraper.
     """
 
-    def __init__(self, *args):
+    def __init__(self, *args, **kwargs):
         """ Initializes PlacesTextScraper class
 
         Args:
             See Scraper.__init__.
         """
 
-        Scraper.__init__(self, *args)
+        Scraper.__init__(self, *args, **kwargs)
 
         self.max_results = 200
 

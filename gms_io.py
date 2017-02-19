@@ -1,28 +1,58 @@
 #!/usr/bin/env python
 # Library providing data dumping classes in a modular way for gmaps_scraper
 
-# TODO: update documentation
-
 import cPickle
 import json
 import os
+import sqlite3
 
-class DummyDuplicateChecker(object):
-    """ A dummy class to be used when RedisDuplicateChecker is not available
+class DuplicateChecker(object):
+    """ A dummy class to be used when deduplication is not desirable
 
-    This class provides dummy functions to mimic RedisDuplicateChecker's
+    This class provides dummy functions to mimic duplicate checking
     functionality, but does not actually check for duplicates or perform any
     other functions.
     """
 
-    def check(self, *args):
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def check(self, *args, **kwargs):
         return True
+
     def flush(self):
         pass
 
+class SQLite3DuplicateChecker(DuplicateChecker):
+    def __init__(self, table = "seen_places", db_path = "seen_places.db"):
+        self.table = table
+        self.db_path = db_path
+        with sqlite3.connect(self.db_path) as connection:
+            try:
+                connection.execute("CREATE TABLE %s (id)" % self.table)
+                connection.commit()
+            except:
+                pass
+
+    def check(self, place_id):
+        with sqlite3.connect(self.db_path) as connection:
+            cursor = connection.cursor()
+            cursor.execute("INSERT INTO %s VALUES (?)" % self.table, (place_id,))
+            cursor.execute("SELECT Count(id) FROM %s WHERE id=?" % self.table, (place_id,))
+            connection.commit()
+            return cursor.fetchone()[0] == 1
+
+    def flush(self):
+        with sqlite3.connect(self.db_path) as connection:
+            try:
+                connection.execute("DELETE FROM %s" % self.table)
+                connection.commit()
+            except:
+                pass
+
 try:
     import redis
-    class RedisDuplicateChecker(object):
+    class RedisDuplicateChecker(DuplicateChecker):
         def __init__(self, set_name = "seen_places", redis_db = 0,
                      redis_host = "localhost", redis_port = 6379):
             # Test to make sure Redis is running
@@ -42,38 +72,28 @@ try:
             Returns:
                 True if the place_id does not exist yet; False if it does.
             """
-            return self.redis.sadd(self.set_name, place_id) == 1
+            return self.redis.sadd(self.set_name, place_id) != 0
 
         def flush(self):
             """ Empties the working set """
             self.redis.delete(self.set_name)
 except:
     print("RedisDuplicateChecker class unavailable; could not import "
-                  " redis.")
+          " redis module.")
 
 class Writer(object):
     """ Base Writer class
 
     Attributes:
-        duplicate_checker: Either a RedisDuplicateChecker or
-            DummyDuplicateChecker object, depending on the availability of
-            Redis.
+        duplicate_checker: An object of the DuplicateChecker class or of one of
+            its child classes.
     """
 
-    def __init__(self, *redis_args):
-        """ Initializes self.duplicate_checker and defines self.flush
-
-        Args:
-            redis_args: A dictionary of keyword arguments. See
-                RedisDuplicateChecker.__init__ for more information.
+    def __init__(self, *args, **kwargs):
+        """ Initializes self.duplicate_checker as a DuplicateChecker by default
         """
 
-        self.duplicate_checker = DummyDuplicateChecker()
-        try:
-            self.duplicate_checker = RedisDuplicateChecker(*redis_args)
-        except Exception as err:
-            print("Could not initialize RedisDuplicateChecker: %s" % err)
-            print("Using DummyDuplicateChecker instead")
+        self.duplicate_checker = DuplicateChecker(*args, **kwargs)
 
 try:
     import pymongo
@@ -83,13 +103,12 @@ try:
         Attributes:
             collection: A pymongo.collection.Collection object to be written
                 to.
-            duplicate_checker: Either a RedisDuplicateChecker or
-                DummyDuplicateChecker object, depending on the availability of
-                Redis.
+            duplicate_checker: An object of the DuplicateChecker class or of one
+                of its child classes.
         """
 
         def __init__(self, collection_name, db_name = "places_db",
-                     host = "localhost:27017", *redis_args):
+                     host = "localhost:27017", *args):
             """ Initializes the MongoWriter class
 
             Args:
@@ -100,11 +119,11 @@ try:
                     that stores seen place_ids.
                 host: A string containing the name of the MongoDB host
                     and its port.
-                redis_args: A dictionary of keyword arguments. See
+                args: A dictionary of keyword arguments. See
                     RedisDuplicateChecker.__init__ for more information.
             """
 
-            Writer.__init__(self, *redis_args)
+            Writer.__init__(self, *args, **kwargs)
             self.collection = pymongo.MongoClient(host)[db_name][collection_name]
 
         def dump(self, data):
@@ -140,28 +159,29 @@ class PickleWriter(Writer):
         """
 
         with open(self.pickle_path, "a+b") as f:
-            cPickle.dump(data, f)
+            for _dict in data:
+                if (self.duplicate_checker.check(_dict["place_id"])):
+                    cPickle.dump(data, f)
 
 class JSONWriter(Writer):
     """ Handles writing to a JSON
 
     Attributes:
         json_path: A string containing a path to a JSON file.
-        duplicate_checker: Either a RedisDuplicateChecker or
-            DummyDuplicateChecker object, depending on the availability of
-            Redis.
+        duplicate_checker: An object of the DuplicateChecker class or of one of
+            its child classes.
     """
 
-    def __init__(self, json_path, *redis_args):
+    def __init__(self, json_path, *args, **kwargs):
         """ Initializes JSONWriter class and output file
 
         Args:
             json_path: A string containing a path to a JSON file.
-            redis_args: A dictionary of keyword arguments. See
+            args: A dictionary of keyword arguments. See
                 RedisDuplicateChecker.__init__ for more information.
         """
 
-        Writer.__init__(self, *redis_args)
+        Writer.__init__(self, *args, **kwargs)
         self.json_path = json_path
 
         if (not os.path.isfile(json_path)):
