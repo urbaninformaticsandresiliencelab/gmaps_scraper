@@ -109,7 +109,7 @@ try:
         """
 
         def __init__(self, collection_name, db_name = "places_db",
-                     host = "localhost:27017", *args):
+                     host = "localhost:27017", *args, **kwargs):
             """ Initializes the MongoWriter class
 
             Args:
