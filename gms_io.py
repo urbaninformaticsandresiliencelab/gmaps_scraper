@@ -37,8 +37,10 @@ class SQLite3DuplicateChecker(DuplicateChecker):
     def check(self, place_id):
         with sqlite3.connect(self.db_path) as connection:
             cursor = connection.cursor()
-            cursor.execute("INSERT INTO %s VALUES (?)" % self.table, (place_id,))
-            cursor.execute("SELECT Count(id) FROM %s WHERE id=?" % self.table, (place_id,))
+            cursor.execute("INSERT INTO %s VALUES (?)" % self.table,
+                           (place_id,))
+            cursor.execute("SELECT Count(id) FROM %s WHERE id=?" % self.table,
+                           (place_id,))
             connection.commit()
             return cursor.fetchone()[0] == 1
 
@@ -56,7 +58,6 @@ try:
         def __init__(self, set_name = "seen_places", redis_db = 0,
                      redis_host = "localhost", redis_port = 6379):
             # Test to make sure Redis is running
-            r = redis.StrictRedis()
             self.redis = redis.StrictRedis(host = redis_host,
                                            port = redis_port, db = redis_db)
             self.redis.set("RedisDuplicateCheckerTest", 1)
@@ -124,7 +125,13 @@ try:
             """
 
             Writer.__init__(self, *args, **kwargs)
-            self.collection = pymongo.MongoClient(host)[db_name][collection_name]
+            db = pymongo.MongoCleint(host)[db_name]
+            if (collection_name in db.collection_names()):
+                print("Dropping existing collection %s from %s" % (
+                    collection_name, db_name
+                ))
+                db[collection_name].drop()
+            self.collection = db[collection_name]
 
         def dump(self, data):
             """ Write data to the previously defined collection, checking for
