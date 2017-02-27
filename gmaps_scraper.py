@@ -8,6 +8,7 @@ import glob
 import json
 import os
 import time
+import shutil
 import subprocess
 import sys
 
@@ -178,7 +179,8 @@ class Scraper(object):
     """
 
     def __init__(self, api_key, output_directory_name = "Untitled_Scrape",
-                 writer = DEFAULT_WRITER, flush_writer = True):
+                 writer = DEFAULT_WRITER, flush_writer = True,
+                 flush_output_directory = False):
         """ Initializes Scraper class
 
         Performs necessary initialization before the scraper starts running,
@@ -194,6 +196,8 @@ class Scraper(object):
             writer: A string containing information about which writer to use.
             flush_writer: A boolean describing whether or not the writer should
                 be flushed when initialized.
+            flush_output_directory: A boolean describing whether or not the
+                output directory should be flushed when the scraper initializes.
         """
 
         self.gmaps = googlemaps.Client(
@@ -206,7 +210,13 @@ class Scraper(object):
         self.flush_writer = flush_writer
 
         self.output_directory_name = output_directory_name
-        self.output_directory = ""
+        self.output_directory = "%s/%s" % (
+            OUTPUT_DIRECTORY_ROOT,
+            self.output_directory_name.replace("/", "_"),
+        )
+        if (os.path.isdir(self.output_directory)) and (flush_output_directory):
+            print("Removing existing directory %s" % self.output_directory)
+            shutil.rmtree(self.output_directory)
         self.period_directory = ""
 
         self.start_time = time.time()
@@ -264,10 +274,6 @@ class Scraper(object):
 
         Additionally, blank log files with headers are created.
         """
-        self.output_directory = "%s/%s" % (
-            OUTPUT_DIRECTORY_ROOT,
-            self.output_directory_name.replace("/", "_"),
-        )
         self.period_directory = "%s/%s" % (
             self.output_directory,
             time.strftime("%Y-%m-%dT%H:%M:%S")
@@ -276,7 +282,7 @@ class Scraper(object):
 
         self.initialize_writer()
 
-        print("Writing data and logs to %s/" % self.period_directory)
+        print("Initialized new period directory %s/" % self.period_directory)
 
         # Initialize logs
         logs = {
@@ -285,8 +291,10 @@ class Scraper(object):
             "termination_log.csv": "REASON"
         }
         for log in logs.iterkeys():
-            with open("%s/%s" % (self.period_directory, log), "w") as f:
-                f.write("TIME,%s\n" % logs[log])
+            log_path = "%s/%s" % (self.output_directory, log)
+            if (not os.path.exists(log_path)):
+                with open(log_path, "a+") as f:
+                    f.write("TIME,%s\n" % logs[log])
 
     def log(self, filename, message):
         """ Write a timestamped message to a log
@@ -298,7 +306,7 @@ class Scraper(object):
             filename: A string containing the name of the log to be written to.
             message: A string containing the message to be logged.
         """
-        with open("%s/%s" % (self.period_directory, filename), "a") as f:
+        with open("%s/%s" % (self.output_directory, filename), "a") as f:
             f.write("%f,%s\n" % (time.time() - self.start_time, message))
 
     def rate_limit(self):
@@ -619,6 +627,7 @@ class SubdivisionScraper(Scraper):
 
                 if (len(split_id) == 0) or ("" in split_id):
                     print("Subdivision ID: %s" % subdivision_id_string)
+                    print("Scrape name: %s" % self.output_directory_name)
                     print("Center coords: (%f, %f)" % (
                         subdivision_center_latitude,
                         subdivision_center_longitude
