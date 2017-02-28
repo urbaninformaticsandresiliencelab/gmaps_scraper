@@ -125,13 +125,7 @@ try:
             """
 
             Writer.__init__(self, *args, **kwargs)
-            db = pymongo.MongoCleint(host)[db_name]
-            if (collection_name in db.collection_names()):
-                print("Dropping existing collection %s from %s" % (
-                    collection_name, db_name
-                ))
-                db[collection_name].drop()
-            self.collection = db[collection_name]
+            self.collection = pymongo.MongoClient(host)[db_name][collection_name]
 
         def dump(self, data):
             """ Write data to the previously defined collection, checking for
