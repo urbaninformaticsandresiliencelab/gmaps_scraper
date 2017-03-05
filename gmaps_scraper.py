@@ -8,6 +8,7 @@ import glob
 import json
 import os
 import time
+import re
 import shutil
 import subprocess
 import sys
@@ -484,8 +485,10 @@ class SubdivisionScraper(Scraper):
                     current scrape area in the subdivision tree.
             scrape must return an array containing all of the results found in
             that scrape area.
-        max_results = Undefined by default. A digit that describes the maximum
-            number of results that the main scraping function can return, as
+        threshold = Undefined by default. A digit that describes the minimum
+            number of results that the main scraping function needs to return,
+            to trigger a recursion. The default is a little less than the
+            maximum number of results that can be expected to be returned,
             defined by the Google Maps API documentation.
         gsm: a staticmaps.Constructor object used for generating Google Static
             Maps API links.
@@ -688,10 +691,19 @@ class SubdivisionScraper(Scraper):
                         # Save the results in a pickle file
                         self.writer.dump(results)
 
-                        # If 60 results were returned, recurse
-                        if (len(results) == self.max_results):
-                            print("Making subdivisions because max results "
-                                  "were returned")
+                        # If the number of results exceeded the threshold,
+                        # recurse.
+                        threshold = self.threshold
+
+                        # HACK: Relax threshold for higher order subdivisions
+                        order = len(re.findall("->", subdivision_id_string))
+                        if (order <= 4):
+                            threshold = int(self.threshold * (1 - 0.6/order))
+                            print("Relaxing threshold to %d" % threshold)
+
+                        if (len(results) >= threshold):
+                            print("Making subdivisions because threshold was "
+                                  "met (%d)" % threshold)
                             make_subdivisions = True
 
                 else:
@@ -729,10 +741,10 @@ class PlacesNearbyScraper(SubdivisionScraper):
 
         Scraper.__init__(self, *args, **kwargs)
 
-        self.max_results = 60
+        self.threshold = 50
 
-        print("Configured scraper to scrape places_nearby; max results = %d" % (
-            self.max_results
+        print("Configured scraper to scrape places_nearby; threshold = %d" % (
+            self.threshold
         ))
 
     def scrape(self, latitude, longitude, radius_meters, query,
@@ -856,10 +868,10 @@ class PlacesRadarScraper(SubdivisionScraper):
 
         Scraper.__init__(self, *args, **kwargs)
 
-        self.max_results = 200
+        self.threshold = 200
 
-        print("Configured scraper to scrape places_radar; max results = %d" % (
-            self.max_results
+        print("Configured scraper to scrape places_radar; threshold = %d" % (
+            self.threshold
         ))
 
     def scrape(self, latitude, longitude, radius_meters, query,
@@ -941,11 +953,11 @@ class PlacesTextScraper(SubdivisionScraper):
 
         Scraper.__init__(self, *args, **kwargs)
 
-        self.max_results = 200
+        self.threshold = 160
 
         print("Configured scraper to scrape places_radar using text search; "
-              "max results = %d" % (
-            self.max_results
+              "threshold = %d" % (
+            self.threshold
         ))
 
     def scrape(self, latitude, longitude, radius_meters, query,
