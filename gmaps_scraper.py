@@ -531,10 +531,9 @@ class SubdivisionScraper(Scraper):
             We get the average longitude and latitude to get the center.
 
         The scrape function is called on each cell and each cell is further
-        subdivided into another square grid of congruent cells if the maximum
-        number of results, as defined in the initialization, is returned. To do
-        this, the function recurses with the cell's region becoming the new
-        grid's region.
+        subdivided into another square grid of congruent cells if the threshold,
+        as defined in the initialization, is returned. To do this, the function
+        recurses with the cell's region becoming the new grid's region.
 
         Each cell is assigned a string detailing that cell's ancestry. For
         example, the bottom left subdivision of the top right subdivision of the
@@ -696,9 +695,9 @@ class SubdivisionScraper(Scraper):
                         threshold = self.threshold
 
                         # HACK: Relax threshold for higher order subdivisions
-                        order = len(re.findall("->", subdivision_id_string))
-                        if (order <= 4):
-                            threshold = int(self.threshold * (1 - 0.6/order))
+                        depth = len(re.findall("->", subdivision_id_string))
+                        if (depth <= 4):
+                            threshold = int(self.threshold * (1 - 0.6/depth))
                             print("Relaxing threshold to %d" % threshold)
 
                         if (len(results) >= threshold):

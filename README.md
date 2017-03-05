@@ -55,8 +55,17 @@ gmaps\_subdivisions.py
 ----------------------
 *gmaps_scraper.py* scrapes places from Google Maps by subdividing a chosen
 area into smaller areas and making a requests for places in that area, making
-further subdivisions if the maximum number of requests, as defined by the
-[Google Places API Web Service documentation](https://developers.google.com/places/web-service/search).
+further subdivisions if a certain threshold is met, by default the maximum
+number of results defined by the
+[Google Places API Web Service documentation](https://developers.google.com/places/web-service/search)
+with a little bit of head space (50 instead of 60, as of the time of writing
+this). Additionally, a bug was discovered where places\_nearby searches over a
+large area with more than 60 results would return less than 60 results, so the
+threshold is automatically relaxed for the first few subdivisions in the
+hierarchy using the formula
+
+    ADJUSTED_THRESHOLD = ACTUAL_THRESHOLD * (1 - 0.6 / HIERARCHY_DEPTH)
+
 More information about the scraping algorithm is documented in the
 *scrape_subdivisions* method of the *SubdivisionScraper* class. From the script:
 
@@ -91,10 +100,9 @@ More information about the scraping algorithm is documented in the
         We get the average longitude and latitude to get the center.
 
     The scraper function is called on each cell and each cell is further
-    subdivided into another square grid of congruent cells if the maximum
-    number of results, as defined in the initialization, is returned. To do
-    this, the function recurses with the cell's region becoming the new
-    grid's region.
+    subdivided into another square grid of congruent cells if the threshold,
+    as defined in the initialization, is met. To do this, the function recurses
+    with the cell's region becoming the new grid's region.
 
     Each cell is assigned a string detailing that cell's ancestry. For
     example, the bottom left subdivision of the top right subdivision of the
