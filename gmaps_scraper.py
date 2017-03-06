@@ -8,7 +8,6 @@ import glob
 import json
 import os
 import time
-import re
 import shutil
 import subprocess
 import sys
@@ -695,7 +694,7 @@ class SubdivisionScraper(Scraper):
                         threshold = self.threshold
 
                         # HACK: Relax threshold for higher order subdivisions
-                        depth = len(re.findall("->", subdivision_id_string))
+                        depth = subdivision_id_string.count("->")
                         if (depth <= 4):
                             threshold = int(self.threshold * (1 - 0.6/depth))
                             print("Relaxing threshold to %d" % threshold)
