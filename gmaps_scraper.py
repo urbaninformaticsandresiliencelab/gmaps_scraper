@@ -120,10 +120,12 @@ MAX_RADIUS_METERS = 50000
 MIN_RADIUS_METERS = 5
 
 # The length of a period, in seconds
-PERIOD_LENGTH = 60*60 # One hour
+#PERIOD_LENGTH = 60*60 # One hour
+PERIOD_LENGTH = 30 # One hour
 
 # Maximum number of requests that can be made in one period
-MAX_REQUESTS_PER_PERIOD = 5000
+#MAX_REQUESTS_PER_PERIOD = 5000
+MAX_REQUESTS_PER_PERIOD = 5
 
 # Default time to sleep between requests
 REQUEST_DELAY = 1.5
@@ -327,17 +329,18 @@ class Scraper(object):
                 MAX_REQUESTS_PER_PERIOD, PERIOD_LENGTH - current_period_length))
             time.sleep(10)
 
-        # End of period
-        if ((time.time() - self.request_period_start_time) >= PERIOD_LENGTH):
+            # End of period
+            if ((time.time() - self.request_period_start_time) >= PERIOD_LENGTH):
 
-            # Reset variables
-            self.request_period_start_time = time.time()
-            self.traversed_this_period = 0
+                # Reset variables
+                self.request_period_start_time = time.time()
+                self.traversed_this_period = 0
 
-            self.log("request_log.csv", self.traversed)
+                self.log("request_log.csv", self.traversed)
 
-            # Create a new output directory
-            self.initialize_output_directory()
+                # Create a new output directory
+                self.initialize_output_directory()
+            current_period_length = time.time() - self.request_period_start_time
 
         # Increment the counters
         self.traversed += 1
