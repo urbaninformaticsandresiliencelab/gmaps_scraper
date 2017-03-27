@@ -3,5 +3,6 @@ output
 sync
 tiger-2016*
 
+*.ipynb
 *.pyc
 TODO*
