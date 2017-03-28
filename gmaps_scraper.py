@@ -120,12 +120,10 @@ MAX_RADIUS_METERS = 50000
 MIN_RADIUS_METERS = 5
 
 # The length of a period, in seconds
-#PERIOD_LENGTH = 60*60 # One hour
-PERIOD_LENGTH = 30 # One hour
+PERIOD_LENGTH = 60*60 # One hour
 
 # Maximum number of requests that can be made in one period
-#MAX_REQUESTS_PER_PERIOD = 5000
-MAX_REQUESTS_PER_PERIOD = 5
+MAX_REQUESTS_PER_PERIOD = 5000
 
 # Default time to sleep between requests
 REQUEST_DELAY = 1.5
