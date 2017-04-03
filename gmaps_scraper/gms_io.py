@@ -73,7 +73,7 @@ try:
             Returns:
                 True if the place_id does not exist yet; False if it does.
             """
-            return self.redis.sadd(self.set_name, place_id) != 0
+            return self.redis.sadd(self.set_name, place_id) == 1
 
         def flush(self):
             """ Empties the working set """
@@ -140,6 +140,24 @@ try:
                     self.collection.insert_one(_dict)
 except:
     print("MongoWriter class unavailable; could not import pymongo")
+
+try:
+    import psycopg2
+    class PostgresWriter(Writer):
+        """ Handles writing to a MongoDB collection
+
+        """
+
+        def __init__(self):
+            # TODO
+            pass
+
+        def dump(self, data):
+            # TODO
+            for _dict in data:
+                pass
+except:
+    print("PostgresWriter class unavailable; could not import psycopg2")
 
 class PickleWriter(Writer):
     """ Handles writing to a pickle file
