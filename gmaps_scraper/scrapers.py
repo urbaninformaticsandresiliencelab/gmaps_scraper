@@ -612,7 +612,7 @@ class SubdivisionScraper(Scraper):
 
                 # Recurse if necessary
                 if (make_subdivisions):
-                    print
+                    print("")
                     self.scrape_subdivisions(subdivision_min_latitude,
                                              subdivision_max_latitude,
                                              subdivision_min_longitude,
