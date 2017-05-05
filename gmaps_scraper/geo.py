@@ -1,9 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Library for various functions related to latitude/longitude like the haversine
 # function
 
 from math import degrees, radians, cos, sin, acos, asin, sqrt
-import numpy
 
 RADIUS_OF_EARTH = 6371000
 

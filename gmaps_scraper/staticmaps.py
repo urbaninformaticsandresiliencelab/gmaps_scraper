@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Small library for generating URLs of visualizations
 
 class Constructor(object):

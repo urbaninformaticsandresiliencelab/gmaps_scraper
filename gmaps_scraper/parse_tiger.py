@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Library for parsing U.S. Census shapefiles
 
 from math import radians, cos, sin, asin, sqrt

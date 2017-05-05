@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Library providing data dumping classes in a modular way for gmaps_scraper
 
-import cPickle
+import pickle
 import json
 import os
 import sqlite3
@@ -180,7 +180,7 @@ class PickleWriter(Writer):
         with open(self.pickle_path, "a+b") as f:
             for _dict in data:
                 if (self.duplicate_checker.check(_dict["place_id"])):
-                    cPickle.dump(data, f)
+                    pickle.dump(data, f)
 
 class JSONWriter(Writer):
     """ Handles writing to a JSON

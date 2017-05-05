@@ -1,12 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import glob
 import os
 import sys
 import time
 
-import parse_tiger
-import scrapers
+from gmaps_scraper import parse_tiger, scrapers
 
 # There are 96 types of places that can be acquired
 PLACE_TYPES = [
@@ -285,7 +284,7 @@ def scrape_details(options):
         print("\n".join(jsons))
         sys.exit(1)
 
-    details = DetailScraper(options.api_key, "%s_%s_details" % (
+    details = scrapers.DetailScraper(options.api_key, "%s_%s_details" % (
         time.strftime("%Y-%m-%d"),
         options.details
     )).scrape("%s/%s" % (JSON_DIRECTORY, options.details))
@@ -303,7 +302,10 @@ if (__name__ == "__main__"):
         pass
 
     import optparse
-    parser = optparse.OptionParser()
+    parser = optparse.OptionParser(
+        usage = "Usage: python3 -m gmaps_scrper [options]"
+
+    )
     parser.add_option("--api-key", dest = "api_key", metavar = "API_KEY",
                       help = "API key to initialize the scraper with",
                       default = api_key)

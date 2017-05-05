@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import googlemaps
 import json
@@ -9,10 +9,10 @@ import subprocess
 import sys
 import time
 
-import parse_tiger
-import geo
-import gms_io
-import staticmaps
+from . import parse_tiger
+from . import geo
+from . import gms_io
+from . import staticmaps
 
 # From https://developers.google.com/places/web-service/search: The maximum
 # allowed radius is 50000 meters.
