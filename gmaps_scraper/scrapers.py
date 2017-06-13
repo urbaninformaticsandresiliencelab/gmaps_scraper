@@ -192,7 +192,7 @@ class Scraper(object):
             "error_log.csv": "ERROR",
             "termination_log.csv": "REASON"
         }
-        for log in logs.iterkeys():
+        for log in logs.keys():
             log_path = "%s/%s" % (self.output_directory, log)
             if (not os.path.exists(log_path)):
                 with open(log_path, "a+") as f:
@@ -299,7 +299,8 @@ class DetailScraper(Scraper):
                 file_object.close()
                 '''
                 place_ids = subprocess.check_output(
-                    ["grep", "-Po", "(?<=\"place_id\":).*?(?=\",)", target]
+                    ["grep", "-Po", "(?<=\"place_id\":).*?(?=\",)", target],
+                    universal_newlines = True
                 ).replace(" ", "").replace("\"", "").rstrip("\n").split("\n")
                 print("Added %d place_ids from %s" % (len(place_ids), target))
 
