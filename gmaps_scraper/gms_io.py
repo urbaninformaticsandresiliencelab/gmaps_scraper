@@ -127,9 +127,18 @@ try:
                     RedisDuplicateChecker.__init__ for more information.
             """
 
+            print("Ignoring duplicate checker preference; using MongoDB's "
+                  "internal unique index functionality")
+
             Writer.__init__(self, *args, **kwargs)
             self.collection = pymongo.MongoClient(host)[db_name][collection_name]
-            if (not "place_id_1" in self.collection.index_information().keys()):
+            try:
+                if (not "place_id_1" in self.collection.index_information().keys()):
+                    self.collection.create_index(
+                        [("place_id", pymongo.ASCENDING)],
+                        unique = True
+                    )
+            except pymongo.errors.OperationFailure:
                 self.collection.create_index(
                     [("place_id", pymongo.ASCENDING)],
                     unique = True
