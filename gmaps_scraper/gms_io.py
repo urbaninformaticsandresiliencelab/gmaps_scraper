@@ -230,16 +230,15 @@ class JSONWriter(Writer):
             data: An iterable containing dictionaries to be dumped.
         """
 
-        with open(self.json_path, "r+") as f:
+        with open(self.json_path, "rb+") as f:
             if (len(data) > 0):
                 f.seek(-2, os.SEEK_END)
                 if (f.tell() != 2):
-                    f.write(",\n")
+                    f.write(bytes(",\n", "UTF-8"))
                 for _dict in data:
                     if (self.duplicate_checker.check(_dict["place_id"])):
-                        json.dump(_dict, f)
-                        f.write(",\n")
+                        f.write(bytes("%s,\n" % json.dumps(_dict), "UTF-8"))
                     else:
                         print("Ignoring duplicate %s" % _dict["place_id"])
                 f.seek(-2, os.SEEK_END)
-                f.write("\n]")
+                f.write(bytes("\n]", "UTF-8"))
