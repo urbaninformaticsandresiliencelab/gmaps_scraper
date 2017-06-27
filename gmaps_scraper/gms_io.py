@@ -112,6 +112,9 @@ try:
                      host = "localhost:27017", *args, **kwargs):
             """ Initializes the MongoWriter class
 
+            Note: MongoDB handles deduplication internally, so the
+            deduplicators are ignored by MongoWriter.
+
             Args:
                 db_name: A string containing the name of the MongoDB
                     database.
@@ -126,6 +129,11 @@ try:
 
             Writer.__init__(self, *args, **kwargs)
             self.collection = pymongo.MongoClient(host)[db_name][collection_name]
+            if (not "place_id_1" in self.collection.index_information().keys()):
+                self.collection.create_index(
+                    [("place_id", pymongo.ASCENDING)],
+                    unique = True
+                )
 
         def dump(self, data):
             """ Write data to the previously defined collection, checking for
@@ -136,8 +144,14 @@ try:
                     collection.
             """
             for _dict in data:
-                if (self.duplicate_checker.check(_dict["place_id"])):
+                # Using duplicate checkers is deprecated for MongoWriter
+                #if (self.duplicate_checker.check(_dict["place_id"])):
+                #    self.collection.insert_one(_dict)
+
+                try:
                     self.collection.insert_one(_dict)
+                except pymongo.errors.DuplicateKeyError:
+                    print("Ignoring duplicate %s" % _dict["place_id"])
 except:
     print("MongoWriter class unavailable; could not import pymongo")
 
@@ -181,6 +195,8 @@ class PickleWriter(Writer):
             for _dict in data:
                 if (self.duplicate_checker.check(_dict["place_id"])):
                     pickle.dump(data, f)
+                else:
+                    print("Ignoring duplicate %s" % _dict["place_id"])
 
 class JSONWriter(Writer):
     """ Handles writing to a JSON
