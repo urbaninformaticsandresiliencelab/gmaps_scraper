@@ -81,8 +81,8 @@ class Scraper(object):
     """
 
     def __init__(self, api_key, output_directory_name = "Untitled_Scrape",
-                 writer = DEFAULT_WRITER, flush_writer = True,
-                 flush_output_directory = False):
+                 writer = DEFAULT_WRITER, flush_duplicates = True,
+                 flush_output = False):
         """ Initializes Scraper class
 
         Performs necessary initialization before the scraper starts running,
@@ -96,10 +96,11 @@ class Scraper(object):
                 OUTPUT_DIRECTORY_ROOT where scraped data and logs will be
                 stored.
             writer: A string containing information about which writer to use.
-            flush_writer: A boolean describing whether or not the writer should
-                be flushed when initialized.
-            flush_output_directory: A boolean describing whether or not the
-                output directory should be flushed when the scraper initializes.
+            flush_duplicates: A boolean describing whether or not the writer
+                should be flushed when initialized.
+            flush_output: A boolean describing whether or not the output
+                directory and/or databases should be flushed when the scraper
+                initializes.
         """
 
         self.gmaps = googlemaps.Client(
@@ -109,14 +110,15 @@ class Scraper(object):
         self.gsm = staticmaps.Constructor()
 
         self.writer_type = writer
-        self.flush_writer = flush_writer
+        self.flush_duplicates = flush_duplicates
+        self.flush_output = flush_output
 
         self.output_directory_name = output_directory_name
         self.output_directory = "%s/%s" % (
             OUTPUT_DIRECTORY_ROOT,
             self.output_directory_name.replace("/", "_"),
         )
-        if (os.path.isdir(self.output_directory)) and (flush_output_directory):
+        if (os.path.isdir(self.output_directory)) and (self.flush_output):
             print("Removing existing directory %s" % self.output_directory)
             shutil.rmtree(self.output_directory)
         self.period_directory = ""
@@ -146,10 +148,12 @@ class Scraper(object):
             print("Using gms_io.PickleWriter")
         elif (self.writer_type == "mongo"):
             self.writer = gms_io.MongoWriter(self.output_directory_name)
+            if (self.flush_output):
+                self.writer.flush()
             print("Using gms_io.MongoWriter")
         else:
             self.writer = gms_io.JSONWriter(
-                ("%s/data.json" % self.output_directory),
+                ("%s/data.json" % self.output_directory)
             )
             print("Using gms_io.JSONWriter")
 
@@ -164,7 +168,7 @@ class Scraper(object):
             self.writer.duplicate_checker = gms_io.SQLite3DuplicateChecker(
                 db_path = "%s/seen_places.db" % self.output_directory
             )
-        if (self.flush_writer):
+        if (self.flush_duplicates):
             self.writer.duplicate_checker.flush()
 
     def initialize_output_directory(self):

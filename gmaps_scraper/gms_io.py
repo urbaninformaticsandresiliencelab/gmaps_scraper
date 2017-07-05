@@ -161,6 +161,11 @@ try:
                     self.collection.insert_one(_dict)
                 except pymongo.errors.DuplicateKeyError:
                     print("Ignoring duplicate %s" % _dict["place_id"])
+
+        def flush(self):
+            """ Drops the current collection """
+
+            self.collection.drop()
 except:
     print("MongoWriter class unavailable; could not import pymongo")
 
