@@ -168,8 +168,8 @@ def bbox_to_geojson(bbox):
     })
 
 if (__name__ == "__main__"):
-    # about 7 miles
-    radius_meters = 11265
+    # about 5 miles
+    radius_meters = 8046.72
 
     with open("top50cities.csv", "r") as f:
         for row in csv.DictReader(f):
@@ -221,13 +221,11 @@ if (__name__ == "__main__"):
             scraping_bboxes += split_bbox(perimeter_bboxes[2], 3, "horizontal")
             scraping_bboxes += split_bbox(perimeter_bboxes[3], 3, "vertical")
 
-            """
             for i in range(len(scraping_bboxes)):
                 with open("temp%s%d" % (city, i), "w") as f:
                     f.write(bbox_to_geojson(scraping_bboxes[i]))
             with open("temp%s%d" % (city, len(scraping_bboxes) + 1), "w") as f:
                 f.write(bbox_to_geojson(row))
-            """
 
             scrape_name = "%s_%s_perimeter_%dm" % (
                 datetime.datetime.now().strftime("%Y-%m-%d"),
@@ -245,11 +243,3 @@ if (__name__ == "__main__"):
                     query = "",
                     **bbox
                 )
-
-            """
-            for i in range(len(scraping_bboxes)):
-                with open("temp%s%d" % (city, i), "w") as f:
-                    f.write(bbox_to_geojson(scraping_bboxes[i]))
-            with open("temp%s%d" % (city, len(scraping_bboxes) + 1), "w") as f:
-                f.write(bbox_to_geojson(row))
-            """
