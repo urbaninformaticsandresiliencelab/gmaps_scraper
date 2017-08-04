@@ -140,11 +140,17 @@ def scrape_subdivisions(options):
 
     print
     if (options.type == "places_nearby"):
-        new_scraper = scrapers.PlacesNearbyScraper(options.api_key,
-                                          scraper_output_directory_name)
+        new_scraper = scrapers.PlacesNearbyScraper(
+            api_key = options.api_key,
+            output_directory_name = scraper_output_directory_name,
+            min_radius = options.min_radius
+        )
     elif (options.type == "places_radar"):
-        new_scraper = scrapers.PlacesRadarScraper(options.api_key,
-                                         scraper_output_directory_name)
+        new_scraper = scrapers.PlacesRadarScraper(
+            api_key = options.api_key,
+            output_directory_name = scraper_output_directory_name,
+            min_radius = options.min_radius
+        )
     elif (options.type != "text_radar"):
         sys.exit(1)
     print
@@ -329,7 +335,7 @@ if (__name__ == "__main__"):
                       help = "The smallest size of a subdivision before a "
                              " branch is terminated (default %d)"
                              % scrapers.MIN_RADIUS_METERS,
-                      default = scrapers.MIN_RADIUS_METERS)
+                      default = scrapers.MIN_RADIUS_METERS, type = "int")
     parser.add_option("--keyword", dest = "keyword", metavar = "KEYWORD",
                       help = "For text_radar scrapers: perform a text search "
                              "for KEYWORD")

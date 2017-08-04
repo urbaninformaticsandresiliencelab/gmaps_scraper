@@ -82,7 +82,7 @@ class Scraper(object):
 
     def __init__(self, api_key, output_directory_name = "Untitled_Scrape",
                  writer = DEFAULT_WRITER, flush_duplicates = True,
-                 flush_output = False):
+                 flush_output = False, *dummy_args, **dummy_kwargs):
         """ Initializes Scraper class
 
         Performs necessary initialization before the scraper starts running,
@@ -262,7 +262,8 @@ class DetailScraper(Scraper):
     """
 
     def __init__(self, api_key, output_directory_name, dump_interval = 50,
-                 request_delay = 0.5, start_at = 0, writer = DEFAULT_WRITER):
+                 request_delay = 0.5, start_at = 0, writer = DEFAULT_WRITER,
+                 *dummy_args, **dummy_kwargs):
         """ Initializes DetailScraper class
 
         Args:
@@ -406,7 +407,8 @@ class SubdivisionScraper(Scraper):
             terminated.
     """
 
-    def __init__(self, min_radius = MIN_RADIUS_METERS):
+    def __init__(self, min_radius = MIN_RADIUS_METERS,
+                 *dummy_args, **dummy_kwargs):
         """ Initializes SubdivisionScraper
 
         Args:
