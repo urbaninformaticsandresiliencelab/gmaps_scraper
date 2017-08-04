@@ -664,6 +664,7 @@ class PlacesNearbyScraper(SubdivisionScraper):
         """
 
         Scraper.__init__(self, *args, **kwargs)
+        SubdivisionScraper.__init__(self, *args, **kwargs)
 
         self.threshold = 50
 
@@ -791,6 +792,7 @@ class PlacesRadarScraper(SubdivisionScraper):
         """
 
         Scraper.__init__(self, *args, **kwargs)
+        SubdivisionScraper.__init__(self, *args, **kwargs)
 
         self.threshold = 200
 
@@ -876,6 +878,7 @@ class PlacesTextScraper(SubdivisionScraper):
         """
 
         Scraper.__init__(self, *args, **kwargs)
+        SubdivisionScraper.__init__(self, *args, **kwargs)
 
         self.threshold = 160
 

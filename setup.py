@@ -4,7 +4,7 @@ import setuptools
 
 setuptools.setup(
     name = "gmaps_scraper",
-    version = "1.1.3",
+    version = "1.1.4",
     description = "Suite of tools for scraping place information using the "
                   "Google Maps API",
     packages = ["gmaps_scraper"],
