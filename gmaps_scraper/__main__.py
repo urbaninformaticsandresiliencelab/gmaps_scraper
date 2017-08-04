@@ -324,6 +324,12 @@ if (__name__ == "__main__"):
     parser.add_option("--type", dest = "type", metavar = "TYPE",
                       help = "Use a scraper of the specified TYPE. Types: %s"
                               % ", ".join(valid_scrape_types))
+    parser.add_option("--min-radius", dest = "min_radius",
+                      metavar = "MIN_RADIUS",
+                      help = "The smallest size of a subdivision before a "
+                             " branch is terminated (default %d)"
+                             % scrapers.MIN_RADIUS_METERS,
+                      default = scrapers.MIN_RADIUS_METERS)
     parser.add_option("--keyword", dest = "keyword", metavar = "KEYWORD",
                       help = "For text_radar scrapers: perform a text search "
                              "for KEYWORD")
