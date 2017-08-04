@@ -184,7 +184,10 @@ class Scraper(object):
             self.output_directory,
             time.strftime("%Y-%m-%dT%H:%M:%S")
         )
-        os.makedirs(self.period_directory)
+        try:
+            os.makedirs(self.period_directory)
+        except OSError:
+            pass
 
         self.initialize_writer()
 
