@@ -18,7 +18,7 @@ from . import staticmaps
 # allowed radius is 50000 meters.
 MAX_RADIUS_METERS = 50000
 
-# No further subdivisions under this size will be made
+# Default setting: No further subdivisions under this size will be made
 MIN_RADIUS_METERS = 5
 
 # The length of a period, in seconds
@@ -399,7 +399,19 @@ class SubdivisionScraper(Scraper):
             defined by the Google Maps API documentation.
         gsm: a staticmaps.Constructor object used for generating Google Static
             Maps API links.
+        min_radius: The smallest radius of a subdivision before that branch is
+            terminated.
     """
+
+    def __init__(self, min_radius = MIN_RADIUS_METERS):
+        """ Initializes SubdivisionScraper
+
+        Args:
+            min_radius: The smallest radius of a subdivision before that branch
+                is terminated.
+        """
+
+        self.min_radius = min_radius
 
     def scrape_subdivisions(self, min_latitude, max_latitude, min_longitude,
                             max_longitude, grid_width, query,
@@ -565,7 +577,7 @@ class SubdivisionScraper(Scraper):
                               "maximum")
                         make_subdivisions = True
 
-                    elif (subdivision_radius_meters < MIN_RADIUS_METERS):
+                    elif (subdivision_radius_meters < self.min_radius):
                         print("Terminating branch because radius is below the "
                               "minimum")
                         self.log(
@@ -618,13 +630,16 @@ class SubdivisionScraper(Scraper):
                 # Recurse if necessary
                 if (make_subdivisions):
                     print("")
-                    self.scrape_subdivisions(subdivision_min_latitude,
-                                             subdivision_max_latitude,
-                                             subdivision_min_longitude,
-                                             subdivision_max_longitude,
-                                             3, query,
-                                             subdivision_id_string,
-                                             target_subdivision_id)
+                    self.scrape_subdivisions(
+                        min_latitude = subdivision_min_latitude,
+                        max_latitude = subdivision_max_latitude,
+                        min_longitude = subdivision_min_longitude,
+                        max_longitude = subdivision_max_longitude,
+                        grid_width = 3,
+                        query = query,
+                        subdivision_parent_id = subdivision_id_string,
+                        target_subdivision_id = target_subdivision_id
+                    )
                 else:
                     print("Branch terminated\n")
 
