@@ -56,6 +56,9 @@ def subdivision_gt(lhs, rhs):
 def subdivision_lt(lhs, rhs):
     return subdivision_gt(rhs, lhs)
 
+def subdivision_geq(lhs, rhs):
+    return (lhs == rhs) or subdivision_gt(lhs, rhs)
+
 def subdivision_child_of(lhs, rhs):
     """ See if one subdivision is a child of another subdivision
 
@@ -70,8 +73,11 @@ def subdivision_child_of(lhs, rhs):
     rhs = rhs.split(" -> ")[1:]
     return ((len(rhs) > len(lhs)) and (rhs[:len(lhs)] == lhs))
 
-def subdivision_geq(lhs, rhs):
-    return (lhs == rhs) or subdivision_gt(lhs, rhs)
+def subdivision_same_branch(lhs, rhs):
+    return (
+        subdivision_child_of(lhs, rhs)
+        or subdivision_child_of(rhs, lhs)
+    )
 
 # Main scraper class contains functionality for initialization and setting of
 # output directory, logging, and rate limiting
@@ -532,9 +538,8 @@ class SubdivisionScraper(Scraper):
                 subdivision_id_string = (subdivision_parent_id + " -> "
                                          + str(subdivision_id))
 
-                # If a target subdivision is specified, skip all of the below
-                # logic and continue to the next loop
                 if (target_subdivision_id is not None):
+
                     if (subdivision_id_string == target_subdivision_id):
                         print("Skipped to %s" % subdivision_id_string)
 
@@ -548,6 +553,15 @@ class SubdivisionScraper(Scraper):
                                          target_subdivision_id)):
                         print("Skipping %s" % subdivision_id_string)
                         continue
+
+                    # If not resuming: stop when the branch changes
+                    elif (
+                        (not resume)
+                        and not (subdivision_same_branch(subdivision_id_string,
+                                                         target_subdivision_id))
+                    ):
+                        return
+
 
                 # First, we need to establish the bounds of this subdivision
                 subdivision_min_latitude = (min_latitude
@@ -588,8 +602,8 @@ class SubdivisionScraper(Scraper):
                     target_subdivision_id is None
                     or (subdivision_child_of(target_subdivision_id,
                                              subdivision_id_string))
-                    or ((resume) and subdivision_gt(subdivision_id_string,
-                                                    target_subdivision_id))
+                    or (subdivision_gt(subdivision_id_string,
+                                       target_subdivision_id))
                 ):
                     print("Subdivision ID: %s" % subdivision_id_string)
                     print("Scrape name: %s" % self.output_directory_name)
@@ -682,7 +696,6 @@ class SubdivisionScraper(Scraper):
                             make_subdivisions = True
 
                 else:
-                    print("not scraping %s" % subdivision_id_string)
                     make_subdivisions = True
 
                 # Recurse if necessary
