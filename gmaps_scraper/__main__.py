@@ -102,6 +102,7 @@ PLACE_TYPES = [
     "zoo"
 ]
 
+VALID_SCRAPE_TYPES = ["places_radar", "places_nearby", "text_radar"]
 
 def scrape_subdivisions(options):
     """ Initialize and start a basic subdivision scraper
@@ -124,7 +125,7 @@ def scrape_subdivisions(options):
         print(", ".join(sorted(parse_tiger.dump_names(state_shapefile))))
         sys.exit(1)
 
-    if (not options.type in valid_scrape_types):
+    if (not options.type in VALID_SCRAPE_TYPES):
         print("Please specify a scrape type with --type. See --help for more "
                 "info.")
         sys.exit(1)
@@ -155,18 +156,26 @@ def scrape_subdivisions(options):
         sys.exit(1)
     print
 
+    kwargs = {
+        "min_longitude": city_extents["min_longitude"],
+        "min_latitude": city_extents["min_latitude"],
+        "max_longitude": city_extents["max_longitude"],
+        "max_latitude": city_extents["max_latitude"],
+        "grid_width": 3
+    }
+    if (options.resume):
+        kwargs.update({
+            "target_subdivision_id": options.resume,
+            "resume": True
+        })
+    elif (options.target):
+        kwargs.update({
+            "target_subdivision_id": options.target,
+            "resume": False
+        })
+
     if (options.type == "text_radar"):
-        if (options.keyword is not None):
-            scrapers.PlacesTextScraper(scraper_output_directory_name).scrape_subdivisions(
-                city_extents["min_latitude"],
-                city_extents["max_latitude"],
-                city_extents["min_longitude"],
-                city_extents["max_longitude"],
-                3, options.keyword)
-        else:
-            print("Please specify a keyword with --keyword. See --help for "
-                  "info.")
-            sys.exit(1)
+        scrapers.PlacesTextScraper(scraper_output_directory_name).scrape_subdivisions(**kwargs)
     else:
         types_to_scrape = PLACE_TYPES
 
@@ -179,11 +188,7 @@ def scrape_subdivisions(options):
         # For each place_type, in a places_nearby or places_radar scrape, the
         # subdivision -> extraction process is used.
         for place_type in types_to_scrape:
-            new_scraper.scrape_subdivisions(city_extents["min_latitude"],
-                                            city_extents["max_latitude"],
-                                            city_extents["min_longitude"],
-                                            city_extents["max_longitude"],
-                                            3, place_type)
+            new_scraper.scrape_subdivisions(query = place_type, **kwargs)
 
     print("Finished scraping %s, %s" % (options.city, options.state))
 
@@ -293,9 +298,7 @@ def scrape_details(options):
         options.details.split("/")[-1]
     )).scrape(options.details)
 
-
-if (__name__ == "__main__"):
-    valid_scrape_types = ["places_radar", "places_nearby", "text_radar"]
+def main():
     api_key = None
 
     try:
@@ -329,7 +332,7 @@ if (__name__ == "__main__"):
                       help = "Scrape the CITY shape in the chosen shapefile")
     parser.add_option("--type", dest = "type", metavar = "TYPE",
                       help = "Use a scraper of the specified TYPE. Types: %s"
-                              % ", ".join(valid_scrape_types))
+                              % ", ".join(VALID_SCRAPE_TYPES))
     parser.add_option("--min-radius", dest = "min_radius",
                       metavar = "MIN_RADIUS",
                       help = "The smallest size of a subdivision before a "
@@ -338,7 +341,8 @@ if (__name__ == "__main__"):
                       default = scrapers.MIN_RADIUS_METERS, type = "int")
     parser.add_option("--keyword", dest = "keyword", metavar = "KEYWORD",
                       help = "For text_radar scrapers: perform a text search "
-                             "for KEYWORD")
+                             "for KEYWORD",
+                      default = "")
     parser.add_option("--categories", dest = "categories",
                       metavar = "CATEGORIES",
                       help = "A list of types to restrict the places_nearby or "
@@ -346,6 +350,10 @@ if (__name__ == "__main__"):
     parser.add_option("--outdir", dest = "outdir", metavar = "OUTDIR",
                       help = "(Optional) Write all results to subdirectories "
                              "of OUTDIR")
+    parser.add_option("--resume-at", dest = "resume", metavar = "ID",
+                      help = "Resume at this subdivision ID")
+    parser.add_option("--target", dest = "target", metavar = "ID",
+                      help = "Scrape only this subdivision ID")
     (options, args) = parser.parse_args()
 
     if (options.api_key is None):
@@ -367,3 +375,7 @@ if (__name__ == "__main__"):
             scrape_details(options)
         else:
             scrape_subdivisions(options)
+
+
+if (__name__ == "__main__"):
+    main()

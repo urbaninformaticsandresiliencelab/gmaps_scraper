@@ -41,6 +41,38 @@ JSON_DIRECTORY = "output/json/" # The directory containing all of the JSONs
 
 DEFAULT_WRITER = "json"
 
+def subdivision_gt(lhs, rhs):
+    """ See if one subdivision ID comes after another id
+
+    Args:
+        lhs, rhs: Subdivision IDs to compare
+
+    Returns:
+        True if lhs > rhs; False otherwise
+    """
+
+    return lhs.split(" -> ")[1:] > rhs.split(" -> ")[1:]
+
+def subdivision_lt(lhs, rhs):
+    return subdivision_gt(rhs, lhs)
+
+def subdivision_child_of(lhs, rhs):
+    """ See if one subdivision is a child of another subdivision
+
+    Args:
+        lhs: rhs: Subdivision IDs to compare
+
+    Returns:
+        True if rhs is a child of lhs; False otherwise
+    """
+
+    lhs = lhs.split(" -> ")[1:]
+    rhs = rhs.split(" -> ")[1:]
+    return ((len(rhs) > len(lhs)) and (rhs[:len(lhs)] == lhs))
+
+def subdivision_geq(lhs, rhs):
+    return (lhs == rhs) or subdivision_gt(lhs, rhs)
+
 # Main scraper class contains functionality for initialization and setting of
 # output directory, logging, and rate limiting
 class Scraper(object):
@@ -382,7 +414,7 @@ class SubdivisionScraper(Scraper):
     For actual scrapers, see the child classes PlacesTextScraper,
     PlacesNearbyScraper, and PlacesRadarScraper.
 
-    Attributes:
+    Attribute
         scrape = Undefined by default. scrape is a function to be defined by
             classes that inherit from SubdivisionScraper, which must take the
             following arguments, in order:
@@ -407,21 +439,24 @@ class SubdivisionScraper(Scraper):
             terminated.
     """
 
-    def __init__(self, min_radius = MIN_RADIUS_METERS,
+    def __init__(self, min_radius = MIN_RADIUS_METERS, dump_state = False,
                  *dummy_args, **dummy_kwargs):
         """ Initializes SubdivisionScraper
 
         Args:
             min_radius: The smallest radius of a subdivision before that branch
                 is terminated.
+            dump_state: A bool that describes whether or not the current
+                subdivision ID should be contstantly dumped to a file 
         """
 
         self.min_radius = min_radius
+        self.dump_state = dump_state
 
     def scrape_subdivisions(self, min_latitude, max_latitude, min_longitude,
-                            max_longitude, grid_width, query,
+                            max_longitude, grid_width, query = "",
                             subdivision_parent_id = "root",
-                            target_subdivision_id = ""):
+                            target_subdivision_id = "", resume = False):
         """ Recursive function that creates subdivisions and invokes the scraper
 
         This is the main function that manages the creation of subdivisions and
@@ -478,28 +513,15 @@ class SubdivisionScraper(Scraper):
                 This variable is managed by the function and should not be
                 modified externally.
             target_subdivision_id: An optional string containing the subdivision
-                ID of the cell to be skipped to. If defined, the function will
-                only scrape subdivisions of that cell; all previous cells are
-                ignored and the function terminates after all of that cell's
-                subdivisions have been scraped.
+                ID of the cell to be skipped to.
+            resume: A bool descibing whether or not to continue scraping after
+                the target subdivsion has been scraped. By default, scraping
+                terminates after the target_subdivision_id is scraped.
         """
 
         subdivision_id = 0
         subdivision_width = (max_latitude - min_latitude)/grid_width
         subdivision_height = (max_longitude - min_longitude)/grid_width
-
-        # If a target subdivision ID is supplied, skip to that subdivision
-        target_subdivision = 0
-        split_id = target_subdivision_id.split(" -> ")
-        if (target_subdivision_id != ""):
-            if (target_subdivision_id[:4] == "root"):
-                print("Skipping forward to %s\n" % target_subdivision_id)
-                target_subdivision = int(split_id[1])
-                split_id = split_id[2:]
-            else:
-                target_subdivision = int(split_id[0])
-                split_id = split_id[1:]
-        target_subdivision_id = " -> ".join(split_id)
 
         for row in range(grid_width):
             for column in range(grid_width):
@@ -512,10 +534,19 @@ class SubdivisionScraper(Scraper):
 
                 # If a target subdivision is specified, skip all of the below
                 # logic and continue to the next loop
-                if (target_subdivision != 0):
-                    if (target_subdivision == subdivision_id):
+                if (target_subdivision_id is not None):
+                    if (subdivision_id_string == target_subdivision_id):
                         print("Skipped to %s" % subdivision_id_string)
-                    else:
+
+                    # Branch out
+                    elif (subdivision_child_of(subdivision_id_string,
+                                               target_subdivision_id)):
+                        print("Dividing %s" % subdivision_id_string)
+
+                    # Next branch
+                    elif (subdivision_lt(subdivision_id_string,
+                                         target_subdivision_id)):
+                        print("Skipping %s" % subdivision_id_string)
                         continue
 
                 # First, we need to establish the bounds of this subdivision
@@ -551,7 +582,15 @@ class SubdivisionScraper(Scraper):
                 # necessary
                 make_subdivisions = False
 
-                if (len(split_id) == 0) or ("" in split_id):
+                # We only scrape this subdivision if the following conditions
+                # are true
+                if (
+                    target_subdivision_id is None
+                    or (subdivision_child_of(target_subdivision_id,
+                                             subdivision_id_string))
+                    or ((resume) and subdivision_gt(subdivision_id_string,
+                                                    target_subdivision_id))
+                ):
                     print("Subdivision ID: %s" % subdivision_id_string)
                     print("Scrape name: %s" % self.output_directory_name)
                     print("Center coords: (%f, %f)" % (
@@ -574,6 +613,19 @@ class SubdivisionScraper(Scraper):
                     ], "polygon")
                     print("Visualization: %s" % self.gsm.generate_url())
                     self.gsm.reset()
+
+                    # dump state to a file
+                    with open(
+                        "%s/id_state.json" % self.output_directory, "w"
+                    ) as f:
+                        json.dump(
+                            {
+                                "id": subdivision_id_string,
+                                "query": query,
+                            },
+                            f,
+                            indent = 4
+                        )
 
                     # If the radius of the subdivision exceeds the max, skip the
                     # result collection and recurse
@@ -630,21 +682,27 @@ class SubdivisionScraper(Scraper):
                             make_subdivisions = True
 
                 else:
+                    print("not scraping %s" % subdivision_id_string)
                     make_subdivisions = True
 
                 # Recurse if necessary
                 if (make_subdivisions):
                     print("")
-                    self.scrape_subdivisions(
-                        min_latitude = subdivision_min_latitude,
-                        max_latitude = subdivision_max_latitude,
-                        min_longitude = subdivision_min_longitude,
-                        max_longitude = subdivision_max_longitude,
-                        grid_width = 3,
-                        query = query,
-                        subdivision_parent_id = subdivision_id_string,
-                        target_subdivision_id = target_subdivision_id
-                    )
+                    kwargs = {
+                        "min_latitude": subdivision_min_latitude,
+                        "max_latitude": subdivision_max_latitude,
+                        "min_longitude": subdivision_min_longitude,
+                        "max_longitude": subdivision_max_longitude,
+                        "grid_width": 3,
+                        "query": query,
+                        "subdivision_parent_id": subdivision_id_string,
+                        "target_subdivision_id": target_subdivision_id,
+                        "resume": resume
+                    }
+                    if (target_subdivision_id is None):
+                        kwargs.pop("target_subdivision_id")
+
+                    self.scrape_subdivisions(**kwargs)
                 else:
                     print("Branch terminated\n")
 
