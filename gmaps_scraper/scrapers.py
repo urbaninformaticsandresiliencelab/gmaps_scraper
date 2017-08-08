@@ -443,6 +443,10 @@ class SubdivisionScraper(Scraper):
             Maps API links.
         min_radius: The smallest radius of a subdivision before that branch is
             terminated.
+        dump_state: A bool that describes whether or not the current
+            subdivision ID should be constantly dumped to a file.
+        state_file: The file that, if dump_state is True, the state will be
+            dumped to.
     """
 
     def __init__(self, min_radius = MIN_RADIUS_METERS, dump_state = False,
@@ -453,11 +457,16 @@ class SubdivisionScraper(Scraper):
             min_radius: The smallest radius of a subdivision before that branch
                 is terminated.
             dump_state: A bool that describes whether or not the current
-                subdivision ID should be contstantly dumped to a file 
+                subdivision ID should be constantly dumped to a file.
         """
 
         self.min_radius = min_radius
         self.dump_state = dump_state
+        self.state_file = "%s/%s_PID%d_state.json" % (
+            self.output_directory,
+            time.strftime("%Y-%m-%dT%H:%M:%S"),
+            os.getpid()
+        )
 
     def scrape_subdivisions(self, min_latitude, max_latitude, min_longitude,
                             max_longitude, grid_width, query = "",
@@ -629,9 +638,7 @@ class SubdivisionScraper(Scraper):
                     self.gsm.reset()
 
                     # dump state to a file
-                    with open(
-                        "%s/id_state.json" % self.output_directory, "w"
-                    ) as f:
+                    with open(self.state_file, "w") as f:
                         json.dump(
                             {
                                 "id": subdivision_id_string,
