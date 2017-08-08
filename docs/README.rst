@@ -129,6 +129,10 @@ constant, or cells that exhibit strange behaviour:
    To re-scrape a subdivision, all arguments except subdivision_parent_id
    must be supplied.
 
+The default behaviour is to stop scraping once the cell of interest has been
+re-scraped. If you instead want to continue on from that point with normal
+behaviour, pass ``resume = True``.
+
 ``scrapers.py`` provides the following classes:
 
 * ``Scraper``: A class for building generic Google Maps API scrapers
