@@ -5,11 +5,13 @@
 import collections
 import csv
 import datetime
+import googlemaps
 import pymongo
 
 import gmaps_scraper
 
 API_KEY = "API_KEY_HERE"
+TIMEOUT = 600
 
 with open("top50cities.csv", "r") as f:
     BOUNDING_BOXES = collections.OrderedDict(
@@ -36,7 +38,7 @@ def scrape_city(city):
     )
 
     gmaps_scraper.scrapers.PlacesNearbyScraper(
-        api_key = API_KEY,
+        gmaps = googlemaps.Client(API_KEY, timeout = TIMEOUT),
         output_directory_name = scrape_name,
         writer = "mongo"
     ).scrape_subdivisions(

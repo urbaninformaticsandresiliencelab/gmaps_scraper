@@ -6,6 +6,7 @@ import math
 import time
 
 API_KEY = "API KEY HERE"
+TIMEOUT = 600
 
 RADIUS_OF_EARTH = 6371000
 
@@ -235,7 +236,10 @@ if (__name__ == "__main__"):
                 radius_meters
             )
             scraper = gmaps_scraper.scrapers.PlacesNearbyScraper(
-                api_key = API_KEY,
+                gmaps = googlemaps.Client(
+                    API_KEY,
+                    timeout = TIMEOUT
+                ),
                 output_directory_name = scrape_name,
                 writer = "mongo"
             )
