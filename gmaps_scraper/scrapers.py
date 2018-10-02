@@ -118,7 +118,7 @@ class Scraper(object):
             traversed since the current period was started.
     """
 
-    def __init__(self, api_key, output_directory_name = "Untitled_Scrape",
+    def __init__(self, gmaps, output_directory_name = "Untitled_Scrape",
                  writer = DEFAULT_WRITER, flush_duplicates = True,
                  flush_output = False, *dummy_args, **dummy_kwargs):
         """ Initializes Scraper class
@@ -128,8 +128,7 @@ class Scraper(object):
         directory.
 
         Args:
-            api_key: A string containing the API key to initialize the
-                googlemaps.Client object with.
+            gmaps: A googlemaps.Client object
             output_directory_name: A directory which is a subdivision of
                 OUTPUT_DIRECTORY_ROOT where scraped data and logs will be
                 stored.
@@ -141,10 +140,7 @@ class Scraper(object):
                 initializes.
         """
 
-        self.gmaps = googlemaps.Client(
-            key = api_key,
-            timeout = 600
-        )
+        self.gmaps = gmaps
         self.gsm = staticmaps.Constructor()
 
         self.writer_type = writer
@@ -299,7 +295,7 @@ class DetailScraper(Scraper):
             between each dump.
     """
 
-    def __init__(self, api_key, output_directory_name, dump_interval = 50,
+    def __init__(self, gmaps, output_directory_name, dump_interval = 50,
                  request_delay = 0.5, start_at = 0, writer = DEFAULT_WRITER,
                  *dummy_args, **dummy_kwargs):
         """ Initializes DetailScraper class
@@ -312,7 +308,7 @@ class DetailScraper(Scraper):
             start_at: The index of the place_ids array to start scraping at.
         """
 
-        Scraper.__init__(self, api_key, output_directory_name, writer)
+        Scraper.__init__(self, gmaps, output_directory_name, writer)
         self.dump_interval = dump_interval
         self.request_delay = request_delay
         self.start_at = start_at
