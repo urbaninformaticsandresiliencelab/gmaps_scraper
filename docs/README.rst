@@ -1,3 +1,7 @@
+**IMPORTANT NOTE: Running this scraper will incur substantial costs due to
+changes in the Google Maps API pricing formulas made after this scraper was
+originally created.**
+
 gmaps-scraper
 =============
 
